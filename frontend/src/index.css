@@ -4,10 +4,17 @@
 
 @font-face {
     font-family: "Brioche";
-    src: url("https://customer-assets.emergentagent.com/job_late-night-chai-1/artifacts/x2feo2vo_brioche.otf")
-        format("opentype");
+    src: url("./fonts/brioche.otf") format("opentype");
     font-weight: 400;
     font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Brioche";
+    src: url("./fonts/BriocheItalic.otf") format("opentype");
+    font-weight: 400;
+    font-style: italic;
     font-display: swap;
 }
 
