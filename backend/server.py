@@ -16,6 +16,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from auth_utils import hash_password, verify_password
 from seed_data import menu_items, retail_products
+from services.storage import init_storage
+from routers.cart_recovery import recovery_loop
 
 # MongoDB
 mongo_url = os.environ["MONGO_URL"]
@@ -63,6 +65,17 @@ async def seed_menu():
             })
         await db.menu_items.insert_many(docs)
         logger.info("Seeded %d menu items", len(docs))
+    else:
+        # Re-sync images only when existing items haven't been manually edited
+        updated = 0
+        for it in menu_items():
+            res = await db.menu_items.update_one(
+                {"name": it["name"], "image": {"$in": [None, "", "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/0541d98d204de4f369b3369b8537f36258ac67b686df88d760a0cbf6cee08ece.png", "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/af3bbb81ecdd9f6da2491746b5bcca7b748689b891de11b8d2d3618b4bd6cc5e.png"]}},
+                {"$set": {"image": it["image"]}}
+            )
+            updated += res.modified_count
+        if updated:
+            logger.info("Refreshed image for %d menu items", updated)
 
 
 async def seed_products():
@@ -90,7 +103,12 @@ async def lifespan(_: FastAPI):
     await seed_admin()
     await seed_menu()
     await seed_products()
+    init_storage()
+    # Start cart recovery background loop
+    import asyncio as _asyncio
+    task = _asyncio.create_task(recovery_loop())
     yield
+    task.cancel()
     client.close()
 
 
@@ -118,9 +136,15 @@ from routers.menu import router as menu_router  # noqa: E402
 from routers.orders import router as orders_router  # noqa: E402
 from routers.products import router as products_router  # noqa: E402
 from routers.admin import router as admin_router  # noqa: E402
+from routers.uploads import router as uploads_router  # noqa: E402
+from routers.cart_recovery import router as cart_router  # noqa: E402
+from routers.delivery import router as delivery_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(menu_router)
 app.include_router(orders_router)
 app.include_router(products_router)
 app.include_router(admin_router)
+app.include_router(uploads_router)
+app.include_router(cart_router)
+app.include_router(delivery_router)

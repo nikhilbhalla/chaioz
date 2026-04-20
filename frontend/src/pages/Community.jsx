@@ -1,4 +1,5 @@
-import { Calendar, Clock, MapPin, Instagram } from "lucide-react";
+import { Calendar, Clock, MapPin } from "lucide-react";
+import InstagramFeed from "@/components/InstagramFeed";
 
 const NIGHT_IMG = "https://images.pexels.com/photos/36505364/pexels-photo-36505364.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
 const POURING_IMG = "https://images.pexels.com/photos/18413480/pexels-photo-18413480.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
@@ -8,15 +9,6 @@ const events = [
   { title: "Late Night Karak", subtitle: "Tue–Thu · 9pm–11pm", desc: "Chai + samosa + kulfi for $16. Two hands, one ritual.", img: NIGHT_IMG },
   { title: "Weekday Brekie Deal", subtitle: "Mon–Fri · until 3pm", desc: "Any wrap + hashbrown + kadak chai = $11.95.", img: STORY_IMG },
   { title: "Open Mic Sundays", subtitle: "Every Sunday · 7pm", desc: "Poetry, music, chai. Bring an instrument or just your voice.", img: POURING_IMG },
-];
-
-const gallery = [
-  "https://images.pexels.com/photos/18413481/pexels-photo-18413481.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=400",
-  "https://images.pexels.com/photos/18413480/pexels-photo-18413480.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=400",
-  "https://images.pexels.com/photos/36505364/pexels-photo-36505364.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=400",
-  "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/af3bbb81ecdd9f6da2491746b5bcca7b748689b891de11b8d2d3618b4bd6cc5e.png",
-  "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/0541d98d204de4f369b3369b8537f36258ac67b686df88d760a0cbf6cee08ece.png",
-  "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/15c37367a7e230b40bd8c86a9054db75f95e9b4f95d5f78198d24c35807cdc0f.png",
 ];
 
 export default function Community() {
@@ -48,27 +40,10 @@ export default function Community() {
         ))}
       </section>
 
-      {/* Instagram feed */}
-      <section className="mt-20" data-testid="ig-feed">
-        <div className="flex justify-between items-end mb-6">
-          <div>
-            <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">@chaioz on the gram</span>
-            <h2 className="font-serif text-4xl text-chaioz-cream mt-2">Tag us. Get featured.</h2>
-          </div>
-          <a href="https://instagram.com/chaioz" className="text-sm text-chaioz-saffron hover:underline inline-flex items-center gap-1">
-            <Instagram className="w-4 h-4" /> Follow
-          </a>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          {gallery.map((g, i) => (
-            <a key={i} href="https://instagram.com/chaioz" data-testid={`ig-tile-${i}`} className="block aspect-square overflow-hidden rounded-lg group">
-              <img src={g} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
-            </a>
-          ))}
-        </div>
+      <section className="mt-20">
+        <InstagramFeed />
       </section>
 
-      {/* Visit */}
       <section className="mt-20 border border-chaioz-line bg-chaioz-deep rounded-3xl p-10 grid md:grid-cols-2 gap-8" data-testid="visit-section">
         <div>
           <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">Visit us</span>

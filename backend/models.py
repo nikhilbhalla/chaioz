@@ -75,8 +75,15 @@ class CreateOrderRequest(BaseModel):
     pickup_time: str             # ISO string
     customer_name: str
     customer_phone: str
+    customer_email: Optional[str] = None
     notes: Optional[str] = None
     payment_method: Literal["square_mock", "pay_at_pickup"] = "square_mock"
+    # Delivery option
+    fulfillment: Literal["pickup", "delivery"] = "pickup"
+    delivery_address: Optional[dict] = None    # {street_address: [..], city, state, zip_code, country}
+    delivery_quote_id: Optional[str] = None
+    delivery_fee: float = 0.0
+    delivery_notes: Optional[str] = None
 
 
 class Order(BaseModel):
@@ -87,14 +94,21 @@ class Order(BaseModel):
     items: List[OrderLineItem]
     subtotal: float
     discount: float = 0.0
+    delivery_fee: float = 0.0
     total: float
     pickup_time: str
     customer_name: str
     customer_phone: str
+    customer_email: Optional[str] = None
     notes: Optional[str] = None
     status: Literal["pending", "confirmed", "preparing", "ready", "completed", "cancelled"] = "confirmed"
     payment_method: str = "square_mock"
     payment_status: Literal["paid", "unpaid"] = "paid"
+    fulfillment: str = "pickup"
+    delivery_address: Optional[dict] = None
+    delivery_status: Optional[str] = None
+    uber_delivery_id: Optional[str] = None
+    uber_tracking_url: Optional[str] = None
     created_at: str = Field(default_factory=_now)
 
 

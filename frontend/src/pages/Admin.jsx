@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtAUD } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -20,8 +21,9 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, Repeat, DollarSign } from "lucide-react";
+import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Search, Truck } from "lucide-react";
 import { toast } from "sonner";
+import MenuItemEditor from "@/components/admin/MenuItemEditor";
 
 const STATUS = ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"];
 
@@ -31,15 +33,21 @@ export default function Admin() {
   const [orders, setOrders] = useState([]);
   const [items, setItems] = useState([]);
   const [products, setProducts] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [q, setQ] = useState("");
 
-  useEffect(() => {
-    if (user?.role !== "admin") return;
+  const reload = () => {
     Promise.all([
       api.get("/admin/stats").then((r) => setStats(r.data)),
       api.get("/admin/orders").then((r) => setOrders(r.data)),
       api.get("/admin/menu").then((r) => setItems(r.data)),
       api.get("/admin/products").then((r) => setProducts(r.data)),
     ]).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (user?.role === "admin") reload();
   }, [user]);
 
   if (loading) return <div className="pt-32 text-center text-chaioz-cream/60">Loading...</div>;
@@ -49,14 +57,25 @@ export default function Admin() {
   const updateStatus = async (id, status) => {
     await api.put(`/admin/orders/${id}/status`, { status });
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
-    toast.success("Order status updated");
+    toast.success(status === "ready" ? "Customer notified via SMS" : "Order status updated");
   };
 
-  const toggleAvail = async (it) => {
-    await api.put(`/admin/menu/${it.id}`, { is_available: !it.is_available });
-    setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, is_available: !it.is_available } : x)));
-    toast.success(`${it.name} ${it.is_available ? "hidden" : "made available"}`);
+  const deleteItem = async (it) => {
+    if (!window.confirm(`Delete "${it.name}"?`)) return;
+    await api.delete(`/admin/menu/${it.id}`);
+    toast.success("Item deleted");
+    reload();
   };
+
+  const openNew = () => { setEditing(null); setEditorOpen(true); };
+  const openEdit = (it) => { setEditing(it); setEditorOpen(true); };
+
+  const filteredItems = items.filter(
+    (it) =>
+      !q ||
+      it.name.toLowerCase().includes(q.toLowerCase()) ||
+      (it.category || "").toLowerCase().includes(q.toLowerCase())
+  );
 
   return (
     <div className="pt-28 pb-20 max-w-7xl mx-auto px-6 sm:px-8" data-testid="admin-page">
@@ -110,7 +129,7 @@ export default function Admin() {
                 <tr>
                   <th className="text-left p-4">Order</th>
                   <th className="text-left p-4">Customer</th>
-                  <th className="text-left p-4">Items</th>
+                  <th className="text-left p-4">Fulfilment</th>
                   <th className="text-left p-4">Total</th>
                   <th className="text-left p-4">Status</th>
                 </tr>
@@ -123,7 +142,15 @@ export default function Admin() {
                       <p className="text-xs text-chaioz-cream/60">{new Date(o.created_at).toLocaleString("en-AU")}</p>
                     </td>
                     <td className="p-4 text-chaioz-cream/80">{o.customer_name}<br/><span className="text-xs text-chaioz-cream/50">{o.customer_phone}</span></td>
-                    <td className="p-4 text-chaioz-cream/80">{o.items.length}</td>
+                    <td className="p-4 text-chaioz-cream/80 text-xs uppercase tracking-wider">
+                      {o.fulfillment === "delivery" ? (
+                        <span className="inline-flex items-center gap-1 text-chaioz-saffron">
+                          <Truck className="w-3 h-3" /> Delivery
+                        </span>
+                      ) : (
+                        "Pickup"
+                      )}
+                    </td>
                     <td className="p-4 text-chaioz-saffron">{fmtAUD(o.total)}</td>
                     <td className="p-4">
                       <Select value={o.status} onValueChange={(v) => updateStatus(o.id, v)}>
@@ -146,16 +173,39 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="menu" className="mt-6">
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-chaioz-cream/50" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu..." data-testid="admin-menu-search" className="pl-9 bg-chaioz-deep border-chaioz-line text-chaioz-cream" />
+            </div>
+            <Button onClick={openNew} data-testid="admin-menu-new" className="rounded-full bg-chaioz-saffron text-chaioz-ink hover:bg-chaioz-saffronHover hover:text-chaioz-ink">
+              <Plus className="w-4 h-4 mr-1" /> New item
+            </Button>
+          </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {items.map((it) => (
-              <div key={it.id} data-testid={`admin-menu-${it.id}`} className="border border-chaioz-line bg-chaioz-deep rounded-xl p-4 flex justify-between gap-3">
-                <div>
-                  <p className="text-chaioz-cream font-medium text-sm">{it.name}</p>
-                  <p className="text-xs text-chaioz-cream/60">{it.category} · {fmtAUD(it.price)}</p>
+            {filteredItems.map((it) => (
+              <div key={it.id} data-testid={`admin-menu-${it.id}`} className="border border-chaioz-line bg-chaioz-deep rounded-xl overflow-hidden flex">
+                <div className="w-20 h-20 flex-shrink-0 bg-chaioz-ink">
+                  {it.image && <img src={it.image} alt={it.name} className="w-full h-full object-cover" />}
                 </div>
-                <Button size="sm" variant={it.is_available ? "outline" : "default"} onClick={() => toggleAvail(it)} className="rounded-full bg-transparent border-chaioz-line text-chaioz-cream hover:text-chaioz-saffron text-xs">
-                  {it.is_available ? "Hide" : "Show"}
-                </Button>
+                <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+                  <div>
+                    <p className="text-chaioz-cream font-medium text-sm truncate">{it.name}</p>
+                    <p className="text-xs text-chaioz-cream/60">{it.category} · {fmtAUD(it.price)}</p>
+                    <div className="flex gap-1 mt-1">
+                      {it.is_bestseller && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-chaioz-saffron/20 text-chaioz-saffron">★ Bestseller</span>}
+                      {!it.is_available && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400">Hidden</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 mt-2">
+                    <Button size="icon" variant="ghost" onClick={() => openEdit(it)} data-testid={`edit-${it.id}`} className="h-7 w-7 text-chaioz-cream/70 hover:text-chaioz-saffron">
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => deleteItem(it)} data-testid={`delete-${it.id}`} className="h-7 w-7 text-chaioz-cream/70 hover:text-red-400">
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -175,6 +225,13 @@ export default function Admin() {
           </ul>
         </TabsContent>
       </Tabs>
+
+      <MenuItemEditor
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        item={editing}
+        onSaved={reload}
+      />
     </div>
   );
 }
