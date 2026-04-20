@@ -9,8 +9,11 @@ export function AuthProvider({ children }) {
 
   const refresh = useCallback(async () => {
     try {
-      const { data } = await api.get("/auth/me");
-      setUser(data);
+      // validateStatus: don't throw on 401 (expected when logged out)
+      const { data, status } = await api.get("/auth/me", {
+        validateStatus: (s) => (s >= 200 && s < 300) || s === 401,
+      });
+      setUser(status === 200 ? data : null);
     } catch {
       setUser(null);
     } finally {
