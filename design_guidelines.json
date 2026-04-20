@@ -1,0 +1,178 @@
+{
+  "brand": {
+    "name": "Chaioz",
+    "tagline": "Your late-night chai ritual",
+    "mission": "Bringing authentic Indian chai to Adelaide with a premium, late-night social vibe.",
+    "archetype": "5 (Jewel & Luxury) + 1 (Organic & Earthy)",
+    "tone": "Warm, authentic, premium, slightly playful, culturally rich but modern",
+    "primary_mode": "dark"
+  },
+  "design_system": {
+    "colors": {
+      "background": "#050B0A",
+      "foreground": "#FDFBF7",
+      "primary": {
+        "DEFAULT": "#E8A84A",
+        "hover": "#F4B842",
+        "foreground": "#050B0A"
+      },
+      "secondary": {
+        "DEFAULT": "#0F4C4A",
+        "hover": "#134E4A",
+        "foreground": "#FDFBF7"
+      },
+      "accent": {
+        "DEFAULT": "#D97736",
+        "hover": "#E88B4A",
+        "foreground": "#FDFBF7"
+      },
+      "muted": {
+        "DEFAULT": "#121A19",
+        "foreground": "#A3A3A3"
+      },
+      "card": {
+        "DEFAULT": "#0A1413",
+        "foreground": "#FDFBF7"
+      },
+      "border": "#1A2E2C",
+      "glass": "rgba(5, 11, 10, 0.7)"
+    },
+    "typography": {
+      "font_families": {
+        "heading": "Brioche, serif",
+        "body": "Montserrat, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scales": {
+        "h1": "text-5xl md:text-6xl tracking-tighter leading-none",
+        "h2": "text-3xl md:text-4xl tracking-tight leading-tight",
+        "h3": "text-xl md:text-2xl tracking-tight leading-snug",
+        "body": "text-base leading-relaxed",
+        "small": "text-sm tracking-wide",
+        "overline": "text-xs tracking-[0.2em] uppercase font-bold"
+      },
+      "custom_fonts": [
+        {
+          "name": "Brioche",
+          "url": "https://customer-assets.emergentagent.com/job_late-night-chai-1/artifacts/x2feo2vo_brioche.otf",
+          "format": "opentype"
+        }
+      ]
+    },
+    "spacing": {
+      "philosophy": "Generous Spacing (E1 standard) - use p-8 to p-12 for bento grids to allow breathing room.",
+      "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+      "section_y": "py-20 md:py-32"
+    },
+    "surfaces": {
+      "glass_header": "backdrop-blur-xl bg-[#050B0A]/80 border-b border-[#1A2E2C] backdrop-saturate-150",
+      "bento_card": "bg-[#0A1413] border border-[#1A2E2C] rounded-2xl overflow-hidden hover:border-[#E8A84A]/50 transition-colors duration-300",
+      "control_room_card": "bg-[#0A1413] border border-[#1A2E2C] rounded-lg p-6 shadow-sm"
+    },
+    "motion": {
+      "default_transition": "transition-all duration-300 ease-out",
+      "hover_lift": "hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#0F4C4A]/20",
+      "page_load": "staggered fade-up for bento grid items"
+    }
+  },
+  "layout_blueprints": {
+    "marketing_pages": {
+      "hero_section": {
+        "type": "immersive_overlay",
+        "background": "hero_chai_dark image with bg-gradient-to-t from-[#050B0A] via-[#050B0A]/60 to-transparent",
+        "content": "H1 using Brioche font ('Your late-night chai ritual'), primary CTA button ('Order Pickup'), secondary CTA ('View Menu'). Aligned to center-bottom for cinematic feel."
+      },
+      "features_bento": {
+        "grid": "grid-cols-1 md:grid-cols-12 gap-8",
+        "items": [
+          { "span": "col-span-12 md:col-span-8 row-span-2", "content": "The Story of Chaioz (Image + Text block)" },
+          { "span": "col-span-12 md:col-span-4 row-span-1", "content": "Loyalty Teaser (Saffron bg)" },
+          { "span": "col-span-12 md:col-span-4 row-span-1", "content": "Late Night Hours widget" }
+        ]
+      },
+      "marquee": {
+        "style": "bg-[#0F4C4A] text-[#FDFBF7] py-4",
+        "text": "AUTHENTIC INDIAN CHAI ✦ LATE NIGHT EATS ✦ STREET FOOD ✦ BUN MASKA ✦ "
+      }
+    },
+    "ordering_flow": {
+      "menu_page": {
+        "layout": "Sticky category sidebar (left, 3 cols) + Item grid (right, 9 cols).",
+        "item_card": "Image on top (max-h-48 object-cover), title, description, price, and 'Add' button. Minimalist dark aesthetic."
+      },
+      "cart_drawer": {
+        "layout": "Right-side slide-over using Shadcn Sheet. Contains order items, pickup time selector (Shadcn Select), and prominent 'Checkout' button in Saffron."
+      }
+    },
+    "dashboard_admin": {
+      "layout": "Control Room Grid (Dense). Sidebar nav, topbar with user profile.",
+      "widgets": "Flat cards, 1px border border-[#1A2E2C]. Use Recharts for daily revenue and AOV charts."
+    }
+  },
+  "media_assets": {
+    "logos": {
+      "main_horizontal": "https://customer-assets.emergentagent.com/job_late-night-chai-1/artifacts/qt4f9iwc_chaioz-horizontal-logo-full-color-rgb-900px-w-72ppi.png"
+    },
+    "hero_backgrounds": [
+      {
+        "id": "hero_chai_dark",
+        "url": "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/0541d98d204de4f369b3369b8537f36258ac67b686df88d760a0cbf6cee08ece.png",
+        "usage": "Main landing page hero image. Use with bottom-to-top dark gradient overlay."
+      },
+      {
+        "id": "mandala_texture_bg",
+        "url": "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/5986f920c82264f082856057bb60e68a428b08762f82d0f45fe784c7eaa63642.png",
+        "usage": "Background texture for sections like 'Why Chaioz' or Loyalty tiers to inject Indian authenticity without overpowering content."
+      }
+    ],
+    "food_and_product": [
+      {
+        "id": "premium_indian_snacks",
+        "url": "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/af3bbb81ecdd9f6da2491746b5bcca7b748689b891de11b8d2d3618b4bd6cc5e.png",
+        "usage": "Desserts/Street food menu highlight image."
+      },
+      {
+        "id": "retail_spices_bg",
+        "url": "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/15c37367a7e230b40bd8c86a9054db75f95e9b4f95d5f78198d24c35807cdc0f.png",
+        "usage": "E-commerce store hero background or retail product category cover."
+      }
+    ],
+    "lifestyle_and_vibe": [
+      {
+        "id": "chai_pouring_1",
+        "url": "https://images.pexels.com/photos/18413481/pexels-photo-18413481.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "usage": "Authentic street market vibe, use for 'Our Story' section."
+      },
+      {
+        "id": "chai_pouring_2",
+        "url": "https://images.pexels.com/photos/18413480/pexels-photo-18413480.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "usage": "Action shot for Community/Events page."
+      },
+      {
+        "id": "cafe_night_vibe",
+        "url": "https://images.pexels.com/photos/36505364/pexels-photo-36505364.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "usage": "Late-night social spot visual, use for 'Visit Us' or Footer background."
+      }
+    ]
+  },
+  "instructions_to_main_agent": {
+    "critical_rules": [
+      "Must implement custom font 'Brioche' using standard @font-face CSS. Only use for Headings (H1, H2).",
+      "Body text MUST be Montserrat.",
+      "Never use generic sans-serif (Inter, Roboto) for headings.",
+      "The primary theme is DARK. Use `#050B0A` as the main body background, not standard black.",
+      "All interactive elements (buttons, inputs, links, tabs) MUST include a kebab-case, role-based `data-testid` attribute (e.g., `data-testid=\"hero-order-button\"`).",
+      "Do NOT use placeholder images. Use ONLY the URLs provided in the media_assets section.",
+      "Buttons must explicitly define hover text color (e.g., `hover:bg-primary/90 hover:text-[#050B0A]`).",
+      "Navigation header must have `z-50`, `backdrop-blur-xl`, and `bg-[#050B0A]/80`.",
+      "Implement Shadcn UI for complex interactives (Select, Sheet for Cart Drawer, Dialog, Form), but deeply customize the CSS to match the Jewel & Luxury archetype. Strip the default 'Vercel-look'.",
+      "Use Lucide React for icons. Keep icon size consistent (`w-5 h-5`).",
+      "E-commerce elements: Provide 'Add to Cart' buttons with clear feedback (Toast notification using Sonner)."
+    ],
+    "tailwind_config_steps": [
+      "Extend colors using the provided palette in `design_system.colors`.",
+      "Add custom font families: `brioche` and `montserrat`.",
+      "Ensure container has centered margins and sensible padding."
+    ]
+  }
+}
