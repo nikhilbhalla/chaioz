@@ -64,11 +64,11 @@ export default function ItemCustomizeDialog({ item, open, onClose }) {
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         data-testid="item-customize-dialog"
-        className="bg-chaioz-deep border-chaioz-line text-chaioz-cream max-w-lg"
+        className="bg-white border-chaioz-line text-chaioz-teal max-w-lg"
       >
         <DialogHeader>
-          <DialogTitle className="font-serif text-3xl text-chaioz-cream">{item.name}</DialogTitle>
-          <DialogDescription className="text-chaioz-cream/60">{item.description}</DialogDescription>
+          <DialogTitle className="font-serif text-3xl text-chaioz-teal">{item.name}</DialogTitle>
+          <DialogDescription className="text-chaioz-teal/60">{item.description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 max-h-[55vh] overflow-y-auto pr-2">
@@ -88,7 +88,7 @@ export default function ItemCustomizeDialog({ item, open, onClose }) {
                       <RadioGroupItem id={`size-${s.name}`} value={s.name} className="hidden" />
                       {s.name}
                     </span>
-                    <span className="text-chaioz-cream/60 text-sm">
+                    <span className="text-chaioz-teal/60 text-sm">
                       {s.price_delta > 0 ? `+${fmtAUD(s.price_delta)}` : "—"}
                     </span>
                   </Label>
@@ -115,7 +115,7 @@ export default function ItemCustomizeDialog({ item, open, onClose }) {
                       />
                       <span>{a.name}</span>
                     </div>
-                    <span className="text-chaioz-cream/60 text-sm">+{fmtAUD(a.price)}</span>
+                    <span className="text-chaioz-teal/60 text-sm">+{fmtAUD(a.price)}</span>
                   </Label>
                 ))}
               </div>
@@ -128,7 +128,7 @@ export default function ItemCustomizeDialog({ item, open, onClose }) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="No sugar, extra hot..."
-              className="bg-chaioz-ink border-chaioz-line text-chaioz-cream"
+              className="bg-chaioz-cream border-chaioz-line text-chaioz-teal"
               data-testid="item-notes"
             />
           </div>
@@ -141,7 +141,7 @@ export default function ItemCustomizeDialog({ item, open, onClose }) {
               variant="outline"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               data-testid="qty-decrement"
-              className="border-chaioz-line bg-transparent text-chaioz-cream rounded-full"
+              className="border-chaioz-line bg-transparent text-chaioz-teal rounded-full"
             >
               <Minus className="w-4 h-4" />
             </Button>
@@ -151,7 +151,7 @@ export default function ItemCustomizeDialog({ item, open, onClose }) {
               variant="outline"
               onClick={() => setQty((q) => q + 1)}
               data-testid="qty-increment"
-              className="border-chaioz-line bg-transparent text-chaioz-cream rounded-full"
+              className="border-chaioz-line bg-transparent text-chaioz-teal rounded-full"
             >
               <Plus className="w-4 h-4" />
             </Button>
@@ -159,7 +159,7 @@ export default function ItemCustomizeDialog({ item, open, onClose }) {
           <Button
             onClick={handleAdd}
             data-testid="add-to-cart-confirm"
-            className="bg-chaioz-saffron text-chaioz-ink hover:bg-chaioz-saffronHover hover:text-chaioz-ink rounded-full px-6"
+            className="bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal rounded-full px-6"
           >
             Add • {fmtAUD(total)}
           </Button>

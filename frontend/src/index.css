@@ -22,25 +22,25 @@
 
 @layer base {
     :root {
-        /* DARK is primary mode, mapped to light vars so default = dark */
-        --background: 174 40% 3%;
-        --foreground: 39 60% 98%;
-        --card: 175 25% 6%;
-        --card-foreground: 39 60% 98%;
-        --popover: 175 30% 5%;
-        --popover-foreground: 39 60% 98%;
-        --primary: 36 78% 60%;
-        --primary-foreground: 174 40% 3%;
-        --secondary: 178 67% 18%;
-        --secondary-foreground: 39 60% 98%;
-        --muted: 175 20% 9%;
-        --muted-foreground: 0 0% 70%;
-        --accent: 22 70% 53%;
-        --accent-foreground: 39 60% 98%;
+        /* WARM CREAM primary theme — aligned with chaioz.com.au */
+        --background: 39 50% 97%;         /* #FDFBF7 */
+        --foreground: 178 67% 18%;        /* #0F4C4A deep teal */
+        --card: 0 0% 100%;                /* pure white */
+        --card-foreground: 178 67% 18%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 178 67% 18%;
+        --primary: 178 67% 18%;           /* deep teal */
+        --primary-foreground: 39 60% 98%;
+        --secondary: 36 78% 60%;          /* saffron */
+        --secondary-foreground: 174 40% 3%;
+        --muted: 39 30% 94%;
+        --muted-foreground: 178 25% 30%;
+        --accent: 36 78% 60%;             /* saffron */
+        --accent-foreground: 174 40% 3%;
         --destructive: 0 70% 45%;
         --destructive-foreground: 39 60% 98%;
-        --border: 178 30% 14%;
-        --input: 175 20% 12%;
+        --border: 178 30% 85%;
+        --input: 39 30% 94%;
         --ring: 36 78% 60%;
         --radius: 0.75rem;
     }
@@ -53,8 +53,8 @@
     html,
     body,
     #root {
-        background-color: #050b0a;
-        color: #fdfbf7;
+        background-color: #fdfbf7;
+        color: #0f4c4a;
     }
     body {
         @apply font-sans antialiased;
@@ -69,7 +69,7 @@
     }
     ::selection {
         background: #e8a84a;
-        color: #050b0a;
+        color: #0f4c4a;
     }
 }
 
@@ -82,12 +82,17 @@
         position: absolute;
         inset: 0;
         pointer-events: none;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.91 0 0 0 0 0.66 0 0 0 0 0.29 0 0 0 0.10 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-        opacity: 0.35;
-        mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.58 0 0 0 0 0.40 0 0 0 0 0.16 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        opacity: 0.4;
+        mix-blend-mode: multiply;
     }
-    .glass {
-        background-color: rgba(5, 11, 10, 0.7);
+    .glass-cream {
+        background-color: rgba(253, 251, 247, 0.85);
+        backdrop-filter: blur(20px) saturate(150%);
+        -webkit-backdrop-filter: blur(20px) saturate(150%);
+    }
+    .glass-dark {
+        background-color: rgba(15, 76, 74, 0.82);
         backdrop-filter: blur(20px) saturate(150%);
         -webkit-backdrop-filter: blur(20px) saturate(150%);
     }
@@ -108,6 +113,14 @@
     }
     .no-scrollbar {
         scrollbar-width: none;
+    }
+
+    /* Cream paper-texture vibe for primary surfaces */
+    .paper-warm {
+        background-color: #fdfbf7;
+        background-image:
+            radial-gradient(at 20% 10%, rgba(232, 168, 74, 0.05) 0, transparent 50%),
+            radial-gradient(at 90% 90%, rgba(15, 76, 74, 0.04) 0, transparent 50%);
     }
 }
 

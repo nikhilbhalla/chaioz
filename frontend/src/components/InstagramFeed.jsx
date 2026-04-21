@@ -30,7 +30,7 @@ export default function InstagramFeed() {
       <div className="flex justify-between items-end mb-6">
         <div>
           <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">@chaioz on the gram</span>
-          <h2 className="font-serif text-4xl text-chaioz-cream mt-2">Tag us. Get featured.</h2>
+          <h2 className="font-serif text-4xl text-chaioz-teal mt-2">Tag us. Get featured.</h2>
         </div>
         <a
           href="https://instagram.com/chaioz"
@@ -46,20 +46,20 @@ export default function InstagramFeed() {
         {IG_POSTS.map((url, i) => (
           <blockquote
             key={i}
-            className="instagram-media bg-chaioz-deep rounded-2xl overflow-hidden border border-chaioz-line"
+            className="instagram-media bg-white rounded-2xl overflow-hidden border border-chaioz-line"
             data-instgrm-captioned
             data-instgrm-permalink={url}
             data-instgrm-version="14"
             data-testid={`ig-embed-${i}`}
             style={{ minWidth: 240, margin: 0 }}
           >
-            <a href={url} target="_blank" rel="noreferrer" className="block text-center py-10 text-chaioz-cream/60 text-sm">
+            <a href={url} target="_blank" rel="noreferrer" className="block text-center py-10 text-chaioz-teal/60 text-sm">
               Loading Instagram post...
             </a>
           </blockquote>
         ))}
       </div>
-      <p className="text-xs text-chaioz-cream/50 text-center mt-4">
+      <p className="text-xs text-chaioz-teal/50 text-center mt-4">
         Share yours with <span className="text-chaioz-saffron">#chaiozadl</span> to be featured here.
       </p>
     </div>

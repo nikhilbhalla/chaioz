@@ -157,18 +157,18 @@ export default function Checkout() {
     return (
       <div className="pt-32 pb-20 max-w-3xl mx-auto px-6 sm:px-8 text-center" data-testid="order-confirmation">
         <CheckCircle className="w-16 h-16 text-chaioz-saffron mx-auto mb-6" />
-        <h1 className="font-serif text-5xl text-chaioz-cream">Chai's brewing.</h1>
-        <p className="text-chaioz-cream/70 mt-4">
+        <h1 className="font-serif text-5xl text-chaioz-teal">Chai's brewing.</h1>
+        <p className="text-chaioz-teal/70 mt-4">
           Order <span className="text-chaioz-saffron font-medium" data-testid="order-code">#{done.short_code}</span> is in the pan.
         </p>
-        <div className="border border-chaioz-line bg-chaioz-deep rounded-2xl p-6 mt-8 inline-block text-left">
-          <p className="text-sm text-chaioz-cream/70">{isDelivery ? "Ready for dispatch" : "Pickup at"}</p>
-          <p className="font-serif text-3xl text-chaioz-cream mt-1">{pickupLocal}</p>
-          <p className="text-sm text-chaioz-cream/70 mt-3">Total: <span className="text-chaioz-saffron">{fmtAUD(done.total)}</span></p>
+        <div className="border border-chaioz-line bg-white rounded-2xl p-6 mt-8 inline-block text-left">
+          <p className="text-sm text-chaioz-teal/70">{isDelivery ? "Ready for dispatch" : "Pickup at"}</p>
+          <p className="font-serif text-3xl text-chaioz-teal mt-1">{pickupLocal}</p>
+          <p className="text-sm text-chaioz-teal/70 mt-3">Total: <span className="text-chaioz-saffron">{fmtAUD(done.total)}</span></p>
           {done.points_earned > 0 && (
             <p className="text-xs text-chaioz-saffron mt-2">+{done.points_earned} loyalty points earned</p>
           )}
-          {email && <p className="text-xs text-chaioz-cream/60 mt-2">Confirmation sent to {email}</p>}
+          {email && <p className="text-xs text-chaioz-teal/60 mt-2">Confirmation sent to {email}</p>}
           {isDelivery && done.uber_tracking_url && (
             <a href={done.uber_tracking_url} target="_blank" rel="noreferrer" className="inline-block text-xs text-chaioz-saffron hover:underline mt-2" data-testid="tracking-link">
               Track your delivery →
@@ -176,8 +176,8 @@ export default function Checkout() {
           )}
         </div>
         <div className="mt-10 flex justify-center gap-3">
-          <Button onClick={() => nav("/menu")} data-testid="confirmation-order-more" className="bg-chaioz-saffron text-chaioz-ink hover:bg-chaioz-saffronHover hover:text-chaioz-ink rounded-full">Order more</Button>
-          <Button variant="outline" onClick={() => nav("/account")} className="rounded-full bg-transparent border-chaioz-line text-chaioz-cream hover:text-chaioz-saffron">View orders</Button>
+          <Button onClick={() => nav("/menu")} data-testid="confirmation-order-more" className="bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal rounded-full">Order more</Button>
+          <Button variant="outline" onClick={() => nav("/account")} className="rounded-full bg-transparent border-chaioz-line text-chaioz-teal hover:text-chaioz-saffron">View orders</Button>
         </div>
       </div>
     );
@@ -185,13 +185,13 @@ export default function Checkout() {
 
   return (
     <div className="pt-28 pb-24 max-w-5xl mx-auto px-6 sm:px-8" data-testid="checkout-page">
-      <h1 className="font-serif text-5xl text-chaioz-cream mb-8">Checkout</h1>
+      <h1 className="font-serif text-5xl text-chaioz-teal mb-8">Checkout</h1>
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-10">
         <div className="space-y-6">
           {/* Fulfillment toggle */}
-          <div className="border border-chaioz-line rounded-2xl bg-chaioz-deep p-6 space-y-4">
-            <h2 className="font-serif text-2xl text-chaioz-cream">How are we serving you?</h2>
+          <div className="border border-chaioz-line rounded-2xl bg-white p-6 space-y-4">
+            <h2 className="font-serif text-2xl text-chaioz-teal">How are we serving you?</h2>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setFulfillment("pickup")}
@@ -199,8 +199,8 @@ export default function Checkout() {
                 className={`text-left border rounded-xl p-4 ${fulfillment === "pickup" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
               >
                 <Store className="w-5 h-5 text-chaioz-saffron mb-2" />
-                <p className="font-medium text-chaioz-cream">Pickup</p>
-                <p className="text-xs text-chaioz-cream/60 mt-1">Collect from North Adelaide</p>
+                <p className="font-medium text-chaioz-teal">Pickup</p>
+                <p className="text-xs text-chaioz-teal/60 mt-1">Collect from North Adelaide</p>
               </button>
               <button
                 onClick={() => setFulfillment("delivery")}
@@ -208,37 +208,37 @@ export default function Checkout() {
                 className={`text-left border rounded-xl p-4 ${fulfillment === "delivery" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
               >
                 <Truck className="w-5 h-5 text-chaioz-saffron mb-2" />
-                <p className="font-medium text-chaioz-cream">Uber Delivery</p>
-                <p className="text-xs text-chaioz-cream/60 mt-1">Door-to-door, ~35 min</p>
+                <p className="font-medium text-chaioz-teal">Uber Delivery</p>
+                <p className="text-xs text-chaioz-teal/60 mt-1">Door-to-door, ~35 min</p>
               </button>
             </div>
           </div>
 
           {/* Customer */}
-          <div className="border border-chaioz-line rounded-2xl bg-chaioz-deep p-6 space-y-5">
-            <h2 className="font-serif text-2xl text-chaioz-cream">Your details</h2>
+          <div className="border border-chaioz-line rounded-2xl bg-white p-6 space-y-5">
+            <h2 className="font-serif text-2xl text-chaioz-teal">Your details</h2>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
-                <Label className="text-chaioz-cream/80">Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="checkout-name" className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream" />
+                <Label className="text-chaioz-teal/80">Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} data-testid="checkout-name" className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal" />
               </div>
               <div>
-                <Label className="text-chaioz-cream/80">Phone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="checkout-phone" className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream" placeholder="0412 345 678"/>
+                <Label className="text-chaioz-teal/80">Phone</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="checkout-phone" className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal" placeholder="0412 345 678"/>
               </div>
               <div className="sm:col-span-2">
-                <Label className="text-chaioz-cream/80">Email (for confirmation)</Label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} data-testid="checkout-email" type="email" className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream" placeholder="you@example.com" />
+                <Label className="text-chaioz-teal/80">Email (for confirmation)</Label>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} data-testid="checkout-email" type="email" className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal" placeholder="you@example.com" />
               </div>
             </div>
             {fulfillment === "pickup" && (
               <div>
-                <Label className="text-chaioz-cream/80 flex items-center gap-2"><Clock className="w-4 h-4 text-chaioz-saffron"/> Pickup time</Label>
+                <Label className="text-chaioz-teal/80 flex items-center gap-2"><Clock className="w-4 h-4 text-chaioz-saffron"/> Pickup time</Label>
                 <Select value={pickup} onValueChange={setPickup}>
-                  <SelectTrigger data-testid="checkout-pickup-time" className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream">
+                  <SelectTrigger data-testid="checkout-pickup-time" className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-chaioz-deep border-chaioz-line text-chaioz-cream max-h-72">
+                  <SelectContent className="bg-white border-chaioz-line text-chaioz-teal max-h-72">
                     {slots.map((s) => (
                       <SelectItem key={s.iso} value={s.iso}>{s.label}</SelectItem>
                     ))}
@@ -247,31 +247,31 @@ export default function Checkout() {
               </div>
             )}
             <div>
-              <Label className="text-chaioz-cream/80">Order notes (optional)</Label>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} data-testid="checkout-notes" className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream" />
+              <Label className="text-chaioz-teal/80">Order notes (optional)</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} data-testid="checkout-notes" className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal" />
             </div>
           </div>
 
           {/* Delivery address */}
           {fulfillment === "delivery" && (
-            <div className="border border-chaioz-line rounded-2xl bg-chaioz-deep p-6 space-y-4" data-testid="delivery-address-section">
-              <h2 className="font-serif text-2xl text-chaioz-cream">Delivery address</h2>
+            <div className="border border-chaioz-line rounded-2xl bg-white p-6 space-y-4" data-testid="delivery-address-section">
+              <h2 className="font-serif text-2xl text-chaioz-teal">Delivery address</h2>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
-                  <Label className="text-chaioz-cream/80">Street</Label>
-                  <Input value={street} onChange={(e) => setStreet(e.target.value)} data-testid="delivery-street" placeholder="12/34 Example Ave" className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream" />
+                  <Label className="text-chaioz-teal/80">Street</Label>
+                  <Input value={street} onChange={(e) => setStreet(e.target.value)} data-testid="delivery-street" placeholder="12/34 Example Ave" className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal" />
                 </div>
                 <div>
-                  <Label className="text-chaioz-cream/80">Suburb</Label>
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} data-testid="delivery-city" className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream" />
+                  <Label className="text-chaioz-teal/80">Suburb</Label>
+                  <Input value={city} onChange={(e) => setCity(e.target.value)} data-testid="delivery-city" className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal" />
                 </div>
                 <div>
-                  <Label className="text-chaioz-cream/80">Postcode</Label>
-                  <Input value={zip} onChange={(e) => setZip(e.target.value)} data-testid="delivery-zip" className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream" />
+                  <Label className="text-chaioz-teal/80">Postcode</Label>
+                  <Input value={zip} onChange={(e) => setZip(e.target.value)} data-testid="delivery-zip" className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal" />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label className="text-chaioz-cream/80">Delivery notes (optional)</Label>
-                  <Input value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} data-testid="delivery-notes" placeholder="Leave at door, ring buzzer 3..." className="mt-1 bg-chaioz-ink border-chaioz-line text-chaioz-cream" />
+                  <Label className="text-chaioz-teal/80">Delivery notes (optional)</Label>
+                  <Input value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} data-testid="delivery-notes" placeholder="Leave at door, ring buzzer 3..." className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal" />
                 </div>
               </div>
               <Button
@@ -279,53 +279,53 @@ export default function Checkout() {
                 variant="outline"
                 disabled={quoteLoading}
                 data-testid="get-delivery-quote"
-                className="w-full rounded-full bg-transparent border-chaioz-saffron text-chaioz-saffron hover:bg-chaioz-saffron hover:text-chaioz-ink"
+                className="w-full rounded-full bg-transparent border-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffron hover:text-chaioz-teal"
               >
                 {quoteLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Truck className="w-4 h-4 mr-2" />}
                 {quote ? `Quote: ${fmtAUD(quote.fee_aud)} · update` : "Get delivery quote"}
               </Button>
               {quote?.mock && (
-                <p className="text-xs text-chaioz-cream/50 text-center">Using estimated quote. Live Uber Direct will kick in once credentials are connected.</p>
+                <p className="text-xs text-chaioz-teal/50 text-center">Using estimated quote. Live Uber Direct will kick in once credentials are connected.</p>
               )}
             </div>
           )}
 
           {/* Payment */}
-          <div className="border border-chaioz-line rounded-2xl bg-chaioz-deep p-6 space-y-4">
-            <h2 className="font-serif text-2xl text-chaioz-cream">Payment</h2>
-            <p className="text-xs text-chaioz-cream/60 leading-relaxed">
+          <div className="border border-chaioz-line rounded-2xl bg-white p-6 space-y-4">
+            <h2 className="font-serif text-2xl text-chaioz-teal">Payment</h2>
+            <p className="text-xs text-chaioz-teal/60 leading-relaxed">
               <ShieldCheck className="w-4 h-4 inline -mt-0.5 mr-1 text-chaioz-saffron" />
               Square checkout (sandbox / mock). No real charge will be made until live Square keys are connected.
             </p>
             <div className="grid sm:grid-cols-2 gap-3">
               <button onClick={() => setPayment("square_mock")} data-testid="payment-square" className={`text-left border rounded-xl p-4 ${payment === "square_mock" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}>
-                <p className="font-medium text-chaioz-cream">Card (Square)</p>
-                <p className="text-xs text-chaioz-cream/60 mt-1">Pay now via Square</p>
+                <p className="font-medium text-chaioz-teal">Card (Square)</p>
+                <p className="text-xs text-chaioz-teal/60 mt-1">Pay now via Square</p>
               </button>
               <button onClick={() => setPayment("pay_at_pickup")} data-testid="payment-pickup" className={`text-left border rounded-xl p-4 ${payment === "pay_at_pickup" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}>
-                <p className="font-medium text-chaioz-cream">Pay at {fulfillment === "delivery" ? "delivery" : "pickup"}</p>
-                <p className="text-xs text-chaioz-cream/60 mt-1">Tap or cash on collection</p>
+                <p className="font-medium text-chaioz-teal">Pay at {fulfillment === "delivery" ? "delivery" : "pickup"}</p>
+                <p className="text-xs text-chaioz-teal/60 mt-1">Tap or cash on collection</p>
               </button>
             </div>
           </div>
         </div>
 
         {/* Summary */}
-        <aside className="border border-chaioz-line rounded-2xl bg-chaioz-deep p-6 h-fit lg:sticky lg:top-28">
-          <h2 className="font-serif text-2xl text-chaioz-cream mb-4">Your order</h2>
+        <aside className="border border-chaioz-line rounded-2xl bg-white p-6 h-fit lg:sticky lg:top-28">
+          <h2 className="font-serif text-2xl text-chaioz-teal mb-4">Your order</h2>
           {items.length === 0 ? (
-            <p className="text-chaioz-cream/60 text-sm">Cart is empty.</p>
+            <p className="text-chaioz-teal/60 text-sm">Cart is empty.</p>
           ) : (
             <>
               <ul className="divide-y divide-chaioz-line">
                 {items.map((it) => (
                   <li key={it._key} className="py-3 flex justify-between text-sm">
-                    <span className="text-chaioz-cream/90">{it.qty} × {it.name}</span>
-                    <span className="text-chaioz-cream">{fmtAUD(it.line_total)}</span>
+                    <span className="text-chaioz-teal/90">{it.qty} × {it.name}</span>
+                    <span className="text-chaioz-teal">{fmtAUD(it.line_total)}</span>
                   </li>
                 ))}
               </ul>
-              <div className="border-t border-chaioz-line mt-4 pt-3 space-y-1 text-sm text-chaioz-cream/80">
+              <div className="border-t border-chaioz-line mt-4 pt-3 space-y-1 text-sm text-chaioz-teal/80">
                 <div className="flex justify-between"><span>Subtotal</span><span>{fmtAUD(totals.subtotal)}</span></div>
                 {fulfillment === "delivery" && (
                   <div className="flex justify-between">
@@ -334,7 +334,7 @@ export default function Checkout() {
                   </div>
                 )}
                 <div className="flex justify-between text-base pt-2 border-t border-chaioz-line mt-2">
-                  <span className="text-chaioz-cream">Total</span>
+                  <span className="text-chaioz-teal">Total</span>
                   <span className="text-chaioz-saffron font-medium" data-testid="checkout-total">{fmtAUD(orderTotal)}</span>
                 </div>
               </div>
@@ -342,7 +342,7 @@ export default function Checkout() {
                 onClick={submit}
                 disabled={submitting}
                 data-testid="checkout-place-order"
-                className="w-full mt-5 bg-chaioz-saffron text-chaioz-ink hover:bg-chaioz-saffronHover hover:text-chaioz-ink rounded-full h-12"
+                className="w-full mt-5 bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal rounded-full h-12"
               >
                 {submitting ? "Placing..." : `Place order • ${fmtAUD(orderTotal)}`}
               </Button>

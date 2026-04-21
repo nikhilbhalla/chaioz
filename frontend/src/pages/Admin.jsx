@@ -50,7 +50,7 @@ export default function Admin() {
     if (user?.role === "admin") reload();
   }, [user]);
 
-  if (loading) return <div className="pt-32 text-center text-chaioz-cream/60">Loading...</div>;
+  if (loading) return <div className="pt-32 text-center text-chaioz-teal/60">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "admin") return <Navigate to="/account" replace />;
 
@@ -79,7 +79,7 @@ export default function Admin() {
 
   return (
     <div className="pt-28 pb-20 max-w-7xl mx-auto px-6 sm:px-8" data-testid="admin-page">
-      <h1 className="font-serif text-5xl text-chaioz-cream mb-8">Admin</h1>
+      <h1 className="font-serif text-5xl text-chaioz-teal mb-8">Admin</h1>
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
@@ -89,18 +89,18 @@ export default function Admin() {
             { label: "Avg. order value (7d)", value: fmtAUD(stats.aov), icon: TrendingUp, testid: "stat-aov" },
             { label: "Repeat customers", value: `${stats.repeat_customer_rate}%`, icon: Repeat, testid: "stat-repeat" },
           ].map((s, i) => (
-            <div key={i} data-testid={s.testid} className="border border-chaioz-line bg-chaioz-deep rounded-2xl p-5">
+            <div key={i} data-testid={s.testid} className="border border-chaioz-line bg-white rounded-2xl p-5">
               <s.icon className="w-5 h-5 text-chaioz-saffron mb-2" />
-              <p className="text-2xl text-chaioz-cream font-medium">{s.value}</p>
-              <p className="text-xs text-chaioz-cream/60 mt-1 uppercase tracking-wider">{s.label}</p>
+              <p className="text-2xl text-chaioz-teal font-medium">{s.value}</p>
+              <p className="text-xs text-chaioz-teal/60 mt-1 uppercase tracking-wider">{s.label}</p>
             </div>
           ))}
         </div>
       )}
 
       {stats?.daily_revenue_14d && (
-        <div className="border border-chaioz-line bg-chaioz-deep rounded-2xl p-6 mb-10" data-testid="revenue-chart">
-          <h3 className="font-serif text-2xl text-chaioz-cream mb-4">Daily revenue (last 14 days)</h3>
+        <div className="border border-chaioz-line bg-white rounded-2xl p-6 mb-10" data-testid="revenue-chart">
+          <h3 className="font-serif text-2xl text-chaioz-teal mb-4">Daily revenue (last 14 days)</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stats.daily_revenue_14d}>
@@ -116,16 +116,16 @@ export default function Admin() {
       )}
 
       <Tabs defaultValue="orders">
-        <TabsList className="bg-chaioz-deep border border-chaioz-line">
-          <TabsTrigger value="orders" data-testid="admin-tab-orders" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-ink">Orders</TabsTrigger>
-          <TabsTrigger value="menu" data-testid="admin-tab-menu" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-ink">Menu</TabsTrigger>
-          <TabsTrigger value="products" data-testid="admin-tab-products" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-ink">Products</TabsTrigger>
+        <TabsList className="bg-white border border-chaioz-line">
+          <TabsTrigger value="orders" data-testid="admin-tab-orders" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Orders</TabsTrigger>
+          <TabsTrigger value="menu" data-testid="admin-tab-menu" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Menu</TabsTrigger>
+          <TabsTrigger value="products" data-testid="admin-tab-products" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Products</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="mt-6">
-          <div className="border border-chaioz-line rounded-2xl bg-chaioz-deep overflow-x-auto">
+          <div className="border border-chaioz-line rounded-2xl bg-white overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-xs uppercase tracking-wider text-chaioz-cream/60 border-b border-chaioz-line">
+              <thead className="text-xs uppercase tracking-wider text-chaioz-teal/60 border-b border-chaioz-line">
                 <tr>
                   <th className="text-left p-4">Order</th>
                   <th className="text-left p-4">Customer</th>
@@ -138,11 +138,11 @@ export default function Admin() {
                 {orders.map((o) => (
                   <tr key={o.id} data-testid={`admin-order-${o.id}`} className="border-b border-chaioz-line/50">
                     <td className="p-4">
-                      <p className="font-medium text-chaioz-cream">#{o.short_code}</p>
-                      <p className="text-xs text-chaioz-cream/60">{new Date(o.created_at).toLocaleString("en-AU")}</p>
+                      <p className="font-medium text-chaioz-teal">#{o.short_code}</p>
+                      <p className="text-xs text-chaioz-teal/60">{new Date(o.created_at).toLocaleString("en-AU")}</p>
                     </td>
-                    <td className="p-4 text-chaioz-cream/80">{o.customer_name}<br/><span className="text-xs text-chaioz-cream/50">{o.customer_phone}</span></td>
-                    <td className="p-4 text-chaioz-cream/80 text-xs uppercase tracking-wider">
+                    <td className="p-4 text-chaioz-teal/80">{o.customer_name}<br/><span className="text-xs text-chaioz-teal/50">{o.customer_phone}</span></td>
+                    <td className="p-4 text-chaioz-teal/80 text-xs uppercase tracking-wider">
                       {o.fulfillment === "delivery" ? (
                         <span className="inline-flex items-center gap-1 text-chaioz-saffron">
                           <Truck className="w-3 h-3" /> Delivery
@@ -154,10 +154,10 @@ export default function Admin() {
                     <td className="p-4 text-chaioz-saffron">{fmtAUD(o.total)}</td>
                     <td className="p-4">
                       <Select value={o.status} onValueChange={(v) => updateStatus(o.id, v)}>
-                        <SelectTrigger className="bg-chaioz-ink border-chaioz-line text-chaioz-cream w-36 h-9" data-testid={`order-status-${o.id}`}>
+                        <SelectTrigger className="bg-chaioz-cream border-chaioz-line text-chaioz-teal w-36 h-9" data-testid={`order-status-${o.id}`}>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-chaioz-deep border-chaioz-line text-chaioz-cream">
+                        <SelectContent className="bg-white border-chaioz-line text-chaioz-teal">
                           {STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                         </SelectContent>
                       </Select>
@@ -165,7 +165,7 @@ export default function Admin() {
                   </tr>
                 ))}
                 {orders.length === 0 && (
-                  <tr><td colSpan="5" className="p-10 text-center text-chaioz-cream/60">No orders yet.</td></tr>
+                  <tr><td colSpan="5" className="p-10 text-center text-chaioz-teal/60">No orders yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -175,33 +175,33 @@ export default function Admin() {
         <TabsContent value="menu" className="mt-6">
           <div className="flex flex-wrap gap-3 mb-4">
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-chaioz-cream/50" />
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu..." data-testid="admin-menu-search" className="pl-9 bg-chaioz-deep border-chaioz-line text-chaioz-cream" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-chaioz-teal/50" />
+              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu..." data-testid="admin-menu-search" className="pl-9 bg-white border-chaioz-line text-chaioz-teal" />
             </div>
-            <Button onClick={openNew} data-testid="admin-menu-new" className="rounded-full bg-chaioz-saffron text-chaioz-ink hover:bg-chaioz-saffronHover hover:text-chaioz-ink">
+            <Button onClick={openNew} data-testid="admin-menu-new" className="rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal">
               <Plus className="w-4 h-4 mr-1" /> New item
             </Button>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredItems.map((it) => (
-              <div key={it.id} data-testid={`admin-menu-${it.id}`} className="border border-chaioz-line bg-chaioz-deep rounded-xl overflow-hidden flex">
-                <div className="w-20 h-20 flex-shrink-0 bg-chaioz-ink">
+              <div key={it.id} data-testid={`admin-menu-${it.id}`} className="border border-chaioz-line bg-white rounded-xl overflow-hidden flex">
+                <div className="w-20 h-20 flex-shrink-0 bg-chaioz-cream">
                   {it.image && <img src={it.image} alt={it.name} className="w-full h-full object-cover" />}
                 </div>
                 <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
                   <div>
-                    <p className="text-chaioz-cream font-medium text-sm truncate">{it.name}</p>
-                    <p className="text-xs text-chaioz-cream/60">{it.category} · {fmtAUD(it.price)}</p>
+                    <p className="text-chaioz-teal font-medium text-sm truncate">{it.name}</p>
+                    <p className="text-xs text-chaioz-teal/60">{it.category} · {fmtAUD(it.price)}</p>
                     <div className="flex gap-1 mt-1">
                       {it.is_bestseller && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-chaioz-saffron/20 text-chaioz-saffron">★ Bestseller</span>}
                       {!it.is_available && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400">Hidden</span>}
                     </div>
                   </div>
                   <div className="flex gap-1 mt-2">
-                    <Button size="icon" variant="ghost" onClick={() => openEdit(it)} data-testid={`edit-${it.id}`} className="h-7 w-7 text-chaioz-cream/70 hover:text-chaioz-saffron">
+                    <Button size="icon" variant="ghost" onClick={() => openEdit(it)} data-testid={`edit-${it.id}`} className="h-7 w-7 text-chaioz-teal/70 hover:text-chaioz-saffron">
                       <Pencil className="w-3 h-3" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => deleteItem(it)} data-testid={`delete-${it.id}`} className="h-7 w-7 text-chaioz-cream/70 hover:text-red-400">
+                    <Button size="icon" variant="ghost" onClick={() => deleteItem(it)} data-testid={`delete-${it.id}`} className="h-7 w-7 text-chaioz-teal/70 hover:text-red-400">
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
@@ -212,12 +212,12 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="products" className="mt-6">
-          <ul className="divide-y divide-chaioz-line border border-chaioz-line rounded-2xl bg-chaioz-deep">
+          <ul className="divide-y divide-chaioz-line border border-chaioz-line rounded-2xl bg-white">
             {products.map((p) => (
               <li key={p.id} className="p-4 flex justify-between" data-testid={`admin-product-${p.id}`}>
                 <div>
-                  <p className="text-chaioz-cream font-medium text-sm">{p.name}</p>
-                  <p className="text-xs text-chaioz-cream/60">{p.category}</p>
+                  <p className="text-chaioz-teal font-medium text-sm">{p.name}</p>
+                  <p className="text-xs text-chaioz-teal/60">{p.category}</p>
                 </div>
                 <span className="text-chaioz-saffron">{fmtAUD(p.price)}</span>
               </li>

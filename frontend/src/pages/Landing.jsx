@@ -41,9 +41,10 @@ export default function Landing() {
   return (
     <div data-testid="landing-page">
       {/* HERO */}
-      <section className="relative pt-24 min-h-screen flex items-end overflow-hidden">
-        <img src={HERO_BG} alt="" className="absolute inset-0 w-full h-full object-cover opacity-65" />
-        <div className="absolute inset-0 bg-gradient-to-t from-chaioz-ink via-chaioz-ink/80 to-chaioz-ink/30" />
+      <section className="relative pt-24 min-h-[90vh] flex items-end overflow-hidden">
+        <img src={HERO_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-chaioz-teal via-chaioz-teal/75 to-chaioz-teal/10" />
+        <div className="absolute inset-0 grain opacity-30" />
         <div className="relative max-w-7xl mx-auto px-6 sm:px-8 pb-20 md:pb-32 w-full">
           <div className="max-w-3xl animate-fade-up">
             <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-chaioz-saffron mb-6">
@@ -54,29 +55,29 @@ export default function Landing() {
               <br />
               <span className="text-chaioz-saffron italic">chai ritual.</span>
             </h1>
-            <p className="text-base md:text-lg text-chaioz-cream/80 mt-6 max-w-xl leading-relaxed">
+            <p className="text-base md:text-lg text-chaioz-cream/85 mt-6 max-w-xl leading-relaxed">
               Adelaide's first authentic Indian chai café. Brewed slow, served warm, made for the people who arrive when the city softens.
             </p>
             <div className="flex flex-wrap gap-3 mt-10">
               <Link to="/menu" data-testid="hero-order-button">
-                <Button className="bg-chaioz-saffron text-chaioz-ink hover:bg-chaioz-saffronHover hover:text-chaioz-ink rounded-full h-14 px-8 text-base">
+                <Button className="bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal rounded-full h-14 px-8 text-base">
                   Order Pickup <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
               <Link to="/loyalty" data-testid="hero-app-button">
-                <Button variant="outline" className="rounded-full h-14 px-8 text-base bg-transparent border-chaioz-cream/30 text-chaioz-cream hover:bg-chaioz-cream/10 hover:text-chaioz-saffron">
+                <Button variant="outline" className="rounded-full h-14 px-8 text-base bg-transparent border-chaioz-cream/40 text-chaioz-cream hover:bg-chaioz-cream/10 hover:text-chaioz-saffron">
                   <Smartphone className="w-4 h-4 mr-2" /> Download App
                 </Button>
               </Link>
             </div>
-            <div className="mt-12 flex items-center gap-6 text-xs text-chaioz-cream/60">
+            <div className="mt-12 flex items-center gap-6 text-xs text-chaioz-cream/70">
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
                 <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
                 <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
                 <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
                 <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
-                <span className="ml-2 text-chaioz-cream/80">4.8 on Google · 1,200+ reviews</span>
+                <span className="ml-2 text-chaioz-cream/85">4.8 on Google · 1,200+ reviews</span>
               </div>
             </div>
           </div>
@@ -84,7 +85,7 @@ export default function Landing() {
       </section>
 
       {/* MARQUEE */}
-      <section className="bg-chaioz-teal overflow-hidden border-y border-chaioz-line">
+      <section className="bg-chaioz-teal overflow-hidden border-y border-chaioz-teal">
         <div className="flex animate-marquee whitespace-nowrap py-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="flex items-center gap-10 px-10 text-chaioz-cream font-serif text-2xl tracking-wide">
@@ -103,7 +104,7 @@ export default function Landing() {
         <div className="flex justify-between items-end mb-10">
           <div>
             <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">Crowd favourites</span>
-            <h2 className="font-serif text-4xl md:text-5xl text-chaioz-cream mt-2">The hits, on rotation.</h2>
+            <h2 className="font-serif text-4xl md:text-5xl text-chaioz-teal mt-2">The hits, on rotation.</h2>
           </div>
           <Link to="/menu" className="hidden md:inline-flex text-sm text-chaioz-saffron hover:underline" data-testid="bestsellers-view-all">
             View full menu →
@@ -125,12 +126,12 @@ export default function Landing() {
         ].map((c, i) => (
           <div key={i} data-testid={`combo-card-${i}`} className="relative h-72 rounded-2xl overflow-hidden border border-chaioz-line group cursor-pointer">
             <img src={c.img} alt={c.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-t from-chaioz-ink via-chaioz-ink/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-chaioz-teal via-chaioz-teal/60 to-transparent" />
             <div className="absolute bottom-0 inset-x-0 p-6">
               <p className="text-xs uppercase tracking-widest text-chaioz-saffron mb-1">Combo</p>
               <h3 className="font-serif text-2xl text-chaioz-cream">{c.title}</h3>
-              <p className="text-sm text-chaioz-cream/80 mt-1">{c.subtitle}</p>
-              <span className="inline-block mt-3 bg-chaioz-saffron text-chaioz-ink text-sm font-medium px-3 py-1 rounded-full">
+              <p className="text-sm text-chaioz-cream/85 mt-1">{c.subtitle}</p>
+              <span className="inline-block mt-3 bg-chaioz-saffron text-chaioz-teal text-sm font-medium px-3 py-1 rounded-full">
                 from ${c.price}
               </span>
             </div>
@@ -145,10 +146,10 @@ export default function Landing() {
         </div>
         <div>
           <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">The Chaioz way</span>
-          <h2 className="font-serif text-4xl md:text-5xl text-chaioz-cream mt-2 leading-tight">
+          <h2 className="font-serif text-4xl md:text-5xl text-chaioz-teal mt-2 leading-tight">
             One recipe. Three generations. <span className="italic text-chaioz-saffron">A whole city.</span>
           </h2>
-          <p className="text-chaioz-cream/70 mt-6 leading-relaxed">
+          <p className="text-chaioz-teal/70 mt-6 leading-relaxed">
             Every cup at Chaioz starts with a recipe that travelled from a kitchen in India to Adelaide's O'Connell Street — same spices, same ratio, same stubborn love for doing it slowly.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-8">
@@ -157,9 +158,9 @@ export default function Landing() {
               { icon: Moon, label: "Open until late" },
               { icon: Heart, label: "Family recipe" },
             ].map((f, i) => (
-              <div key={i} className="border border-chaioz-line rounded-xl p-4 text-center bg-chaioz-deep">
+              <div key={i} className="border border-chaioz-line rounded-xl p-4 text-center bg-white">
                 <f.icon className="w-5 h-5 text-chaioz-saffron mx-auto mb-2" />
-                <p className="text-sm text-chaioz-cream/80">{f.label}</p>
+                <p className="text-sm text-chaioz-teal/80">{f.label}</p>
               </div>
             ))}
           </div>
@@ -168,31 +169,31 @@ export default function Landing() {
 
       {/* APP BANNER */}
       <section className="max-w-7xl mx-auto px-6 sm:px-8 py-12">
-        <div className="relative overflow-hidden rounded-3xl border border-chaioz-line bg-chaioz-teal/40 grain p-10 md:p-16">
+        <div className="relative overflow-hidden rounded-3xl bg-chaioz-teal grain p-10 md:p-16">
           <div className="grid md:grid-cols-2 gap-10 items-center relative z-10">
             <div>
               <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">Chaioz app</span>
               <h2 className="font-serif text-4xl md:text-5xl text-chaioz-cream mt-3 leading-tight">
                 Skip the queue. Earn chai for free.
               </h2>
-              <p className="text-chaioz-cream/80 mt-4 max-w-md">
+              <p className="text-chaioz-cream/85 mt-4 max-w-md">
                 Download the app and get <span className="text-chaioz-saffron font-medium">10% off your first order</span> + 100 bonus rewards points.
               </p>
               <div className="flex gap-3 mt-6">
                 <Link to="/signup" data-testid="app-cta-signup">
-                  <Button className="rounded-full bg-chaioz-saffron text-chaioz-ink hover:bg-chaioz-saffronHover hover:text-chaioz-ink h-12 px-6">
+                  <Button className="rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal h-12 px-6">
                     Claim 10% off
                   </Button>
                 </Link>
-                <Button variant="outline" className="rounded-full bg-transparent border-chaioz-cream/30 text-chaioz-cream hover:bg-chaioz-cream/10 hover:text-chaioz-saffron h-12 px-6" data-testid="app-cta-app-store">
+                <Button variant="outline" className="rounded-full bg-transparent border-chaioz-cream/40 text-chaioz-cream hover:bg-chaioz-cream/10 hover:text-chaioz-saffron h-12 px-6" data-testid="app-cta-app-store">
                   App Store
                 </Button>
               </div>
             </div>
             <div className="flex md:justify-end">
               <div className="bg-chaioz-cream p-4 rounded-2xl">
-                <QrCode className="w-32 h-32 text-chaioz-ink" data-testid="app-qr-code" />
-                <p className="text-xs text-chaioz-ink text-center mt-2 font-medium">Scan to download</p>
+                <QrCode className="w-32 h-32 text-chaioz-teal" data-testid="app-qr-code" />
+                <p className="text-xs text-chaioz-teal text-center mt-2 font-medium">Scan to download</p>
               </div>
             </div>
           </div>
@@ -203,7 +204,7 @@ export default function Landing() {
       <section className="max-w-7xl mx-auto px-6 sm:px-8 py-24" data-testid="reviews-section">
         <div className="text-center mb-12">
           <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">Word on the street</span>
-          <h2 className="font-serif text-4xl md:text-5xl text-chaioz-cream mt-2">What chai lovers say.</h2>
+          <h2 className="font-serif text-4xl md:text-5xl text-chaioz-teal mt-2">What chai lovers say.</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-5">
           {[
@@ -211,13 +212,13 @@ export default function Landing() {
             { name: "Jacob T.", text: "Found my new midnight spot. Vibe, food and the chai. 10/10.", rating: 5 },
             { name: "Aisha R.", text: "Bun maska + masala chai > everything else in Adelaide. Sorry.", rating: 5 },
           ].map((r, i) => (
-            <div key={i} data-testid={`review-${i}`} className="border border-chaioz-line bg-chaioz-deep rounded-2xl p-6">
+            <div key={i} data-testid={`review-${i}`} className="border border-chaioz-line bg-white rounded-2xl p-6">
               <div className="flex gap-1 mb-3">
                 {[...Array(r.rating)].map((_, k) => (
                   <Star key={k} className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
                 ))}
               </div>
-              <p className="text-chaioz-cream/80 leading-relaxed text-sm">"{r.text}"</p>
+              <p className="text-chaioz-teal/80 leading-relaxed text-sm">"{r.text}"</p>
               <p className="text-chaioz-saffron text-xs mt-4 uppercase tracking-wider">— {r.name}</p>
             </div>
           ))}

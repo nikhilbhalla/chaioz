@@ -35,8 +35,8 @@ export default function Store() {
     <div className="pt-28 pb-20 max-w-7xl mx-auto px-6 sm:px-8" data-testid="store-page">
       <div className="mb-10">
         <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">Take Chaioz home</span>
-        <h1 className="font-serif text-5xl md:text-6xl text-chaioz-cream mt-2">The Shop</h1>
-        <p className="text-chaioz-cream/70 mt-3 max-w-xl">
+        <h1 className="font-serif text-5xl md:text-6xl text-chaioz-teal mt-2">The Shop</h1>
+        <p className="text-chaioz-teal/70 mt-3 max-w-xl">
           Hand-blended chai, ceramic cups, and gift boxes designed for the late-night ritual.
         </p>
       </div>
@@ -49,8 +49,8 @@ export default function Store() {
             data-testid={`store-filter-${c.toLowerCase().replace(/\s/g, "-")}`}
             className={`whitespace-nowrap text-sm uppercase tracking-wide px-4 py-2 rounded-full ${
               filter === c
-                ? "bg-chaioz-saffron text-chaioz-ink"
-                : "border border-chaioz-line text-chaioz-cream/80 hover:text-chaioz-saffron"
+                ? "bg-chaioz-saffron text-chaioz-teal"
+                : "border border-chaioz-line text-chaioz-teal/80 hover:text-chaioz-saffron"
             }`}
           >
             {c}
@@ -63,27 +63,27 @@ export default function Store() {
           <div
             key={p.id}
             data-testid={`product-card-${p.id}`}
-            className="bg-chaioz-deep border border-chaioz-line rounded-2xl overflow-hidden hover:border-chaioz-saffron/50 transition-all duration-300 group"
+            className="bg-white border border-chaioz-line rounded-2xl overflow-hidden hover:border-chaioz-saffron/50 transition-all duration-300 group"
           >
             <div className="relative h-56 overflow-hidden">
               <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" loading="lazy" />
               {p.is_subscription && (
-                <span className="absolute top-3 left-3 bg-chaioz-saffron text-chaioz-ink text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full inline-flex items-center gap-1">
+                <span className="absolute top-3 left-3 bg-chaioz-saffron text-chaioz-teal text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full inline-flex items-center gap-1">
                   <Sparkles className="w-3 h-3" /> Subscription
                 </span>
               )}
             </div>
             <div className="p-5">
               <p className="text-xs uppercase tracking-widest text-chaioz-saffron">{p.category}</p>
-              <h3 className="font-serif text-2xl text-chaioz-cream mt-1">{p.name}</h3>
-              <p className="text-sm text-chaioz-cream/60 mt-2 leading-relaxed line-clamp-2">{p.description}</p>
+              <h3 className="font-serif text-2xl text-chaioz-teal mt-1">{p.name}</h3>
+              <p className="text-sm text-chaioz-teal/60 mt-2 leading-relaxed line-clamp-2">{p.description}</p>
               <div className="flex justify-between items-center mt-5">
                 <span className="text-lg text-chaioz-saffron">{fmtAUD(p.price)}</span>
                 <Button
                   size="sm"
                   onClick={() => addToCart(p)}
                   data-testid={`product-add-${p.id}`}
-                  className="bg-chaioz-saffron text-chaioz-ink hover:bg-chaioz-saffronHover hover:text-chaioz-ink rounded-full"
+                  className="bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal rounded-full"
                 >
                   <ShoppingBag className="w-4 h-4 mr-1" /> Add
                 </Button>

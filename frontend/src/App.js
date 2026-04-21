@@ -19,7 +19,7 @@ import Admin from "@/pages/Admin";
 
 function App() {
   return (
-    <div className="min-h-screen bg-chaioz-ink text-chaioz-cream">
+    <div className="min-h-screen paper-warm text-chaioz-teal">
       <BrowserRouter>
         <AuthProvider>
           <CartProvider>
@@ -42,9 +42,9 @@ function App() {
             <Footer />
             <Toaster
               position="top-right"
-              theme="dark"
+              theme="light"
               toastOptions={{
-                style: { background: "#0A1413", border: "1px solid #1A2E2C", color: "#FDFBF7" },
+                style: { background: "#FFFFFF", border: "1px solid #E0DACE", color: "#0F4C4A" },
               }}
             />
           </CartProvider>
