@@ -47,21 +47,21 @@ export default function Landing() {
       {/* HERO — switches copy + CTA based on time of day */}
       <section className="relative pt-24 min-h-[90vh] flex items-end overflow-hidden">
         <img src={HERO_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className={`absolute inset-0 bg-gradient-to-t ${isMorning ? "from-chaioz-saffron/90 via-chaioz-saffron/40 to-chaioz-cream/10" : "from-chaioz-teal via-chaioz-teal/75 to-chaioz-teal/10"}`} />
+        <div className={`absolute inset-0 bg-gradient-to-t ${isMorning ? "from-chaioz-cream via-chaioz-cream/80 to-chaioz-saffron/20" : "from-chaioz-teal via-chaioz-teal/75 to-chaioz-teal/10"}`} />
         <div className="absolute inset-0 grain opacity-30" />
         <div className="relative max-w-7xl mx-auto px-6 sm:px-8 pb-20 md:pb-32 w-full">
           <div className="max-w-3xl animate-fade-up">
-            <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-chaioz-saffron mb-6">
+            <span className={`inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] mb-6 ${isMorning ? "text-chaioz-ember" : "text-chaioz-saffron"}`}>
               {isMorning ? <Sunrise className="w-3 h-3" /> : <Moon className="w-3 h-3" />} North Adelaide
             </span>
             {isMorning ? (
               <>
-                <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl leading-[0.9] tracking-tight text-chaioz-teal text-balance">
+                <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl leading-[0.9] tracking-tight text-chaioz-tealDark text-balance drop-shadow-sm">
                   Good morning.
                   <br />
-                  <span className="italic">Chai's brewing.</span>
+                  <span className="italic text-chaioz-ember">Chai's brewing.</span>
                 </h1>
-                <p className="text-base md:text-lg text-chaioz-teal/85 mt-6 max-w-xl leading-relaxed">
+                <p className="text-base md:text-lg text-chaioz-tealDark mt-6 max-w-xl leading-relaxed font-medium">
                   Bun maska, masala omelette wraps, karak chai — all hot, all under $12. Ready for pickup in 5–10 minutes.
                 </p>
                 <div className="flex flex-wrap gap-3 mt-10">

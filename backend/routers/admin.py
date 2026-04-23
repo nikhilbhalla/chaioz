@@ -249,12 +249,47 @@ async def list_products_admin(_: dict = Depends(get_current_admin)):
     return await db.products.find({}, {"_id": 0}).sort("sort_order", 1).to_list(500)
 
 
+@router.post("/products")
+async def create_product(payload: dict, _: dict = Depends(get_current_admin)):
+    from server import db
+    if not payload.get("name") or payload.get("price") is None or not payload.get("category"):
+        raise HTTPException(status_code=400, detail="name, price, category required")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": payload["name"],
+        "description": payload.get("description", ""),
+        "price": float(payload["price"]),
+        "category": payload["category"],
+        "image": payload.get("image"),
+        "stock": int(payload.get("stock", 100)),
+        "is_subscription": bool(payload.get("is_subscription", False)),
+        "sort_order": int(payload.get("sort_order", 999)),
+    }
+    await db.products.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
 @router.put("/products/{product_id}")
 async def update_product(product_id: str, payload: dict, _: dict = Depends(get_current_admin)):
     from server import db
     payload.pop("_id", None)
     payload.pop("id", None)
+    if "price" in payload and payload["price"] is not None:
+        payload["price"] = float(payload["price"])
+    if "stock" in payload and payload["stock"] is not None:
+        payload["stock"] = int(payload["stock"])
     res = await db.products.update_one({"id": product_id}, {"$set": payload})
     if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Product not found")
+    doc = await db.products.find_one({"id": product_id}, {"_id": 0})
+    return doc
+
+
+@router.delete("/products/{product_id}")
+async def delete_product(product_id: str, _: dict = Depends(get_current_admin)):
+    from server import db
+    res = await db.products.delete_one({"id": product_id})
+    if not res.deleted_count:
         raise HTTPException(status_code=404, detail="Product not found")
     return {"ok": True}

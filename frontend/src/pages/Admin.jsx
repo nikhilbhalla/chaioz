@@ -31,6 +31,7 @@ import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Sear
 import { toast } from "sonner";
 import MenuItemEditor from "@/components/admin/MenuItemEditor";
 import ComboEditor from "@/components/admin/ComboEditor";
+import ProductEditor from "@/components/admin/ProductEditor";
 
 const STATUS = ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"];
 
@@ -45,6 +46,8 @@ export default function Admin() {
   const [combos, setCombos] = useState([]);
   const [comboEditing, setComboEditing] = useState(null);
   const [comboEditorOpen, setComboEditorOpen] = useState(false);
+  const [productEditing, setProductEditing] = useState(null);
+  const [productEditorOpen, setProductEditorOpen] = useState(false);
   const [q, setQ] = useState("");
 
   const reload = () => {
@@ -87,6 +90,15 @@ export default function Admin() {
     if (!window.confirm(`Delete combo "${c.name}"?`)) return;
     await api.delete(`/admin/combos/${c.id}`);
     toast.success("Combo deleted");
+    reload();
+  };
+
+  const openNewProduct = () => { setProductEditing(null); setProductEditorOpen(true); };
+  const openEditProduct = (p) => { setProductEditing(p); setProductEditorOpen(true); };
+  const deleteProduct = async (p) => {
+    if (!window.confirm(`Delete product "${p.name}"?`)) return;
+    await api.delete(`/admin/products/${p.id}`);
+    toast.success("Product deleted");
     reload();
   };
 
@@ -368,17 +380,42 @@ export default function Admin() {
         </TabsContent>
 
         <TabsContent value="products" className="mt-6">
-          <ul className="divide-y divide-chaioz-line border border-chaioz-line rounded-2xl bg-white">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-serif text-2xl text-chaioz-teal">Retail products</h3>
+              <p className="text-xs text-chaioz-teal/60 mt-1">Chai blends, gift boxes, merch + subscriptions sold via the Shop page.</p>
+            </div>
+            <Button onClick={openNewProduct} data-testid="admin-product-new" className="rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal">
+              <Plus className="w-4 h-4 mr-1" /> New product
+            </Button>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
             {products.map((p) => (
-              <li key={p.id} className="p-4 flex justify-between" data-testid={`admin-product-${p.id}`}>
-                <div>
-                  <p className="text-chaioz-teal font-medium text-sm">{p.name}</p>
-                  <p className="text-xs text-chaioz-teal/60">{p.category}</p>
+              <div key={p.id} data-testid={`admin-product-${p.id}`} className="border border-chaioz-line bg-white rounded-xl overflow-hidden flex">
+                <div className="w-24 h-24 flex-shrink-0 bg-chaioz-cream">
+                  {p.image && <img src={p.image} alt={p.name} className="w-full h-full object-cover" />}
                 </div>
-                <span className="text-chaioz-saffron">{fmtAUD(p.price)}</span>
-              </li>
+                <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+                  <div>
+                    <p className="text-chaioz-teal font-medium text-sm truncate">{p.name}</p>
+                    <p className="text-xs text-chaioz-teal/60">{p.category} · {fmtAUD(p.price)}</p>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {p.is_subscription && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-chaioz-saffron/20 text-chaioz-saffron uppercase tracking-wider">Subscription</span>}
+                      {p.stock !== undefined && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-chaioz-cream border border-chaioz-line text-chaioz-teal/70">{p.stock} in stock</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 mt-2">
+                    <Button size="icon" variant="ghost" onClick={() => openEditProduct(p)} data-testid={`product-edit-${p.id}`} className="h-7 w-7 text-chaioz-teal/70 hover:text-chaioz-saffron">
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => deleteProduct(p)} data-testid={`product-delete-${p.id}`} className="h-7 w-7 text-chaioz-teal/70 hover:text-red-400">
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -394,6 +431,13 @@ export default function Admin() {
         onClose={() => setComboEditorOpen(false)}
         combo={comboEditing}
         menuItems={items}
+        onSaved={reload}
+      />
+
+      <ProductEditor
+        open={productEditorOpen}
+        onClose={() => setProductEditorOpen(false)}
+        product={productEditing}
         onSaved={reload}
       />
     </div>

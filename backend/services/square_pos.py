@@ -154,6 +154,9 @@ async def push_order_to_square(order: dict) -> dict:
                 order={
                     "location_id": SQUARE_LOCATION_ID,
                     "reference_id": str(order.get("short_code") or order.get("id") or "")[:40],
+                    # Order-level note surfaces the customer's special request at
+                    # the top of the Square ticket so staff see it immediately.
+                    "note": (order.get("notes") or "")[:500],
                     "line_items": line_items,
                     "fulfillments": [fulfillment],
                 },

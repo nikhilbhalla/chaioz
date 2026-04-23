@@ -52,7 +52,9 @@ export default function Checkout() {
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
-  const slots = pickupSlots();
+  // Memoised so the ISO strings don't regenerate on every render — otherwise
+  // the Select's `value` never matches the current slots and displays blank.
+  const slots = useMemo(() => pickupSlots(), []);
 
   useEffect(() => {
     if (user) {
