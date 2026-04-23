@@ -229,7 +229,8 @@ async def update_combo(combo_id: str, payload: dict, _: dict = Depends(get_curre
     res = await db.combos.update_one({"id": combo_id}, {"$set": payload})
     if not res.matched_count:
         raise HTTPException(status_code=404, detail="Combo not found")
-    return {"ok": True}
+    doc = await db.combos.find_one({"id": combo_id}, {"_id": 0})
+    return doc
 
 
 @router.delete("/combos/{combo_id}")

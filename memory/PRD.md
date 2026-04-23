@@ -52,6 +52,21 @@ Flipped from dark-mode-primary to warm cream primary theme matching chaioz.com.a
 - **Mobile app kickoff**: `/app/mobile` Expo scaffold with Auth, Menu, Cart, Checkout, Order confirm, Account (see `/app/mobile/README.md`). New `/api/auth/token` endpoint returns JWT in body for mobile Bearer auth.
 - **Test coverage**: 75/75 pytest pass (iter1 api + iter2 + iter5 + iter6 + iter7).
 
+### 2026-04-23 — Iteration 8 (webhooks + admin combo UI)
+- **Square webhook handler**: `POST /api/webhooks/square` receives `order.updated` / `payment.updated` events from Square POS, verifies HMAC-SHA256 signature (`SQUARE_WEBHOOK_SIGNATURE_KEY`), maps fulfillment state (PROPOSED→confirmed, RESERVED→preparing, PREPARED→ready, COMPLETED→completed, CANCELED→cancelled) back onto our local order doc, and auto-fires the "order is ready" SMS when staff taps PREPARED on the Square tablet. Health check at `GET /api/webhooks/square/health`. NOTE: `SQUARE_WEBHOOK_SIGNATURE_KEY` is intentionally empty until the user creates the subscription in Square Developer Dashboard → paste the generated key into `backend/.env` → `sudo supervisorctl restart backend` to enable signature verification.
+- **Admin Combo CRUD UI**: new "Combos" tab on `/admin` page. `ComboEditor` dialog with multi-select item search + live "save $X" calculation. Create / edit / delete wired to existing `/api/admin/combos` endpoints.
+- **PUT /admin/combos/{id}** now returns the updated combo doc (was `{ok:true}`) for API shape consistency.
+- **Test coverage**: 85/85 pytest pass (10 new iter8 tests including signed-webhook verification + admin combo CRUD).
+
+## How to enable the Square webhook subscription (manual step)
+1. Go to https://developer.squareup.com/apps → your Chaioz sandbox app.
+2. Left sidebar → **Webhooks** → **Subscriptions** → **Add Subscription**.
+3. Notification URL: `https://late-night-chai-1.preview.emergentagent.com/api/webhooks/square`
+4. API Version: latest (e.g. `2026-01-22`).
+5. Event types: `order.updated`, `payment.updated`.
+6. Copy the generated **Signature Key** → paste into `/app/backend/.env` as `SQUARE_WEBHOOK_SIGNATURE_KEY=...` → `sudo supervisorctl restart backend`.
+7. Test with the Square "Send Test Event" button — you should see `matched:true` in the response.
+
 ## Required environment variables
 ```
 EMERGENT_LLM_KEY=            # set
@@ -77,9 +92,9 @@ UBER_WEBHOOK_SIGNING_KEY=
 
 ### P1 — next
 - **Mobile app** — complete Phase 2 work (push notifications via Expo, store submission via EAS Build, Apple/Google Pay via Square In-App SDK, deep-linking).
-- **Go-live prep**: wire real Resend + Twilio + Uber credentials; flip Square to Production.
-- **Admin Combo CRUD UI**: backend endpoints exist — frontend editor pending.
-- **Square webhook** handler for order state sync (Square → our DB) for tablet-side updates.
+- **Go-live prep**: wire real Resend + Twilio + Uber credentials; flip Square to Production; create the Square webhook subscription (see "How to enable" section above).
+- **Square webhook**: ✅ done. Awaiting user to paste `SQUARE_WEBHOOK_SIGNATURE_KEY` from Square Developer Dashboard.
+- **Admin Combo CRUD UI**: ✅ done.
 
 ### P2
 - Subscription products via Stripe (monthly chai packs)
