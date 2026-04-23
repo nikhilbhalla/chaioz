@@ -159,10 +159,11 @@ async def get_combos():
     for c in combos:
         original = total(c["items"])
         savings = round(original - float(c.get("bundle_price", 0)), 2)
-        # Resolve full item details; skip combos where nothing matches (avoids
-        # silently broken combos when an admin renames a referenced item).
+        # Resolve full item details. Require ALL referenced items to exist —
+        # a partial combo (e.g. an admin renamed one item) would surface
+        # confusing pricing, so we skip it entirely.
         resolved = [items_by_name[n] for n in c["items"] if n in items_by_name]
-        if not resolved:
+        if not resolved or len(resolved) != len(c["items"]):
             continue
         out.append({
             **c,

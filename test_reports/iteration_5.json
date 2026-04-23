@@ -1,0 +1,44 @@
+{
+  "summary": "Chaioz Phase 1 — Iteration 7 critical retest. All iter6 critical findings are now resolved. Verified two fixes: (A) routers/orders.py now coerces pickup_time='ASAP' to a real RFC3339 ISO at the top of create_order via _ensure_rfc3339, and the coerced value is used for Order() persistence AND for the email pickup_local formatter (which is also wrapped in try/except). (B) routers/orders.py reorder now uses .get() fallbacks for customer_name/customer_phone INSIDE the try/except, so legacy docs missing these fields do not raise KeyError. (C) routers/menu.py combos now require len(resolved) == len(c['items']) so partial combos are skipped. Created /app/backend/tests/test_chaioz_phase1_iter7.py with 4 targeted retests that explicitly cover: ASAP+email pickup (must 200, pickup_time stored as ISO not 'ASAP', square_order_id populated within 12s), ASAP+email delivery (same), reorder after $unset customer_name+customer_phone via direct motor DB connection (must not 500 — passed with fallback to user.name), and admin-created combo with ['Karak Classic','NonExistentItem99'] must NOT appear in public GET /api/menu/combos. Full regression: 75/75 pass including 17/17 iter6, 20/20 iter2, 13/13 iter5, 21/21 iter1 api. Zero failures. The iter6 flaky /api/uploads 502 did not reproduce this run.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_chaioz_phase1_iter7.py",
+    "/app/backend/tests/test_chaioz_phase1_iter6.py",
+    "/app/test_reports/pytest/iter7_results.xml",
+    "/app/test_reports/pytest/iter7_targeted_results.xml",
+    "/app/test_reports/pytest/iter7_full_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/orders.py line 40: good — pickup_time_iso coerced once and reused. Line 97 now parses pickup_time_iso (already ISO) inside try/except. Clean.",
+    "routers/orders.py reorder (lines 194-216): dict access moved inside try/except with .get() fallbacks — legacy docs missing customer_name/customer_phone/subtotal now safely fall back. Verified via direct MongoDB $unset in iter7 test.",
+    "routers/menu.py line 166: `if not resolved or len(resolved) != len(c['items'])` correctly skips both empty and partial combos. Verified end-to-end.",
+    "MINOR: Square sync still runs in BackgroundTask after DB insert (order persists before Square reply). Not a regression — was noted in iter6. If Square fails, square_sync_error is stored. Consider exposing this state prominently in admin UI for reconciliation.",
+    "MINOR: test_reorder_order_with_customer_name_unset uses direct motor DB connection by reading /app/backend/.env — acceptable for test-only reproduction of legacy docs; documented in test."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_chaioz_phase1_iter7.py",
+    "/app/test_reports/pytest/iter7_results.xml",
+    "/app/test_reports/pytest/iter7_targeted_results.xml",
+    "/app/test_reports/pytest/iter7_full_results.xml",
+    "/app/test_reports/iteration_5.json"
+  ],
+  "success_rate": {
+    "backend": "100% (75/75 full suite pass; 17/17 iter6; 4/4 iter7 targeted; 54/54 regression)",
+    "frontend": "not tested (backend-only request)"
+  },
+  "test_credentials": "Admin: admin@chaioz.com.au / Chaioz@2026. Dynamic TEST_iter7_*@example.com users registered at runtime.",
+  "seed_data_creation": "Registered ~1 test user (TEST_iter7_reorder_*) and placed ~5 orders (pickup ASAP+email, delivery ASAP+email, iso pickup, original-for-reorder, reorder-clone). Short-lived combo TEST_iter7_partial_* created + deleted in the finally block. One legacy-simulated order had customer_name/customer_phone $unset via direct motor call — left in DB as-is (not harmful, reorder worked and created a clone).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All Phase 1 critical bugs resolved. Re-run: `pytest /app/backend/tests/ -v` (75 tests, ~23s). If adding features, extend the iter7 file with new targeted tests. Square sandbox is LIVE; mocked APIs remain: Resend email, Twilio SMS, Uber Direct. Note: the test_reorder_order_with_customer_name_unset test depends on MongoDB being reachable from the test runner (reads /app/backend/.env for MONGO_URL+DB_NAME).",
+  "rca_of_the_issue": "All 3 bugs from iter6 RCA confirmed fixed. (1) ASAP literal ValueError: fixed in routers/orders.py line 40 via `pickup_time_iso = _ensure_rfc3339(payload.pickup_time or '')` then every downstream reference uses pickup_time_iso; pickup_local email formatter on line 97 additionally wrapped in try/except for belt-and-braces safety. Verified: persisted order.pickup_time matches ^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2} regex — no longer literal 'ASAP'. Square sandbox returns square_order_id within 1-3s. (2) Reorder KeyError on customer_name: dict access moved inside try/except with .get() fallbacks → returns 200 with clone (or 422 cleanly). Verified by direct motor $unset on customer_name+customer_phone then POST /orders/{id}/reorder → 200, new_order.customer_name='Fallback UserName' (from user.name). (3) Partial combo: GET /api/menu/combos no longer returns combos where any referenced item is missing; verified by creating admin combo with ['Karak Classic','NonExistentItem99'] → not present in public list. All resolved."
+}

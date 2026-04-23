@@ -12,7 +12,7 @@ from services.notifications import (
     order_confirmation_email_html,
     order_ready_sms,
 )
-from services.square_pos import sync_order_async, is_configured as square_configured
+from services.square_pos import sync_order_async, is_configured as square_configured, _ensure_rfc3339
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -34,6 +34,10 @@ async def create_order(
     from server import db
     if not payload.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
+    # Coerce non-ISO literals like 'ASAP' to a real RFC3339 timestamp so every
+    # downstream consumer (Square push, email formatter, DB) gets a consistent
+    # value.
+    pickup_time_iso = _ensure_rfc3339(payload.pickup_time or "")
     subtotal = round(sum(i.line_total for i in payload.items), 2)
     delivery_fee = round(payload.delivery_fee, 2) if payload.fulfillment == "delivery" else 0.0
     discount = 0.0
@@ -46,7 +50,7 @@ async def create_order(
         discount=discount,
         delivery_fee=delivery_fee,
         total=total,
-        pickup_time=payload.pickup_time,
+        pickup_time=pickup_time_iso,
         customer_name=payload.customer_name,
         customer_phone=payload.customer_phone,
         customer_email=payload.customer_email,
@@ -89,7 +93,10 @@ async def create_order(
         )
 
     if payload.customer_email:
-        pickup_local = datetime.fromisoformat(payload.pickup_time.replace("Z", "+00:00")).strftime("%I:%M %p")
+        try:
+            pickup_local = datetime.fromisoformat(pickup_time_iso.replace("Z", "+00:00")).strftime("%I:%M %p")
+        except Exception:
+            pickup_local = "soon"
         bg.add_task(
             send_email,
             payload.customer_email,
@@ -182,12 +189,13 @@ async def reorder(order_id: str, bg: BackgroundTasks, user: dict = Depends(get_c
         raise HTTPException(status_code=404, detail="Order not found")
 
     # Build new order from original — guard against legacy docs that may be
-    # missing required OrderLineItem/Order fields (e.g. 'price', 'line_total').
-    items = [
-        {**i, "notes": i.get("notes")}
-        for i in original.get("items", [])
-    ]
+    # missing required OrderLineItem/Order fields (e.g. 'price', 'line_total',
+    # 'customer_name').
     try:
+        items = [
+            {**i, "notes": i.get("notes")}
+            for i in original.get("items", [])
+        ]
         new_order = Order(
             user_id=user["id"],
             items=items,
@@ -196,8 +204,8 @@ async def reorder(order_id: str, bg: BackgroundTasks, user: dict = Depends(get_c
             delivery_fee=0.0,
             total=original.get("subtotal", 0.0),
             pickup_time=datetime.now(timezone.utc).isoformat(),
-            customer_name=original["customer_name"],
-            customer_phone=original["customer_phone"],
+            customer_name=original.get("customer_name") or user.get("name", "Customer"),
+            customer_phone=original.get("customer_phone") or "",
             customer_email=original.get("customer_email"),
             notes="Reorder of #" + original.get("short_code", ""),
             payment_method="square_mock",
