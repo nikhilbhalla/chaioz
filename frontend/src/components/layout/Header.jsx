@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ShoppingBag, User, Menu as MenuIcon, X, LogOut } from "lucide-react";
 import { useState } from "react";
 import ChaiozLogo from "@/components/ChaiozLogo";
+import DayModeToggle from "@/components/DayModeToggle";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ export default function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <DayModeToggle />
           <Button
             variant="ghost"
             size="sm"

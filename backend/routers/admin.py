@@ -30,6 +30,7 @@ async def stats(_: dict = Depends(get_current_admin)):
     repeat_users = sum(1 for u in set(user_ids) if user_ids.count(u) > 1)
     repeat_rate = round((repeat_users / unique_users) * 100, 1) if user_ids else 0.0
 
+    # ----- Daily revenue (last 14 days) -----
     daily = {}
     for o in month_orders:
         try:
@@ -42,6 +43,43 @@ async def stats(_: dict = Depends(get_current_admin)):
         d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
         series.append({"date": d, "revenue": round(daily.get(d, 0), 2)})
 
+    # ----- Morning vs Evening split (last 14d by Adelaide local time — UTC+9:30 approx) -----
+    # Morning: 5am–2pm local. Evening: 2pm–late.
+    ADL_OFFSET = 9.5  # hours
+    morning_rev = 0.0
+    evening_rev = 0.0
+    morning_orders = 0
+    evening_orders = 0
+    for o in month_orders:
+        try:
+            dt_utc = datetime.fromisoformat(o["created_at"].replace("Z", "+00:00"))
+            local_hour = (dt_utc.hour + ADL_OFFSET) % 24
+            total = o.get("total", 0)
+            if 5 <= local_hour < 14:
+                morning_rev += total
+                morning_orders += 1
+            else:
+                evening_rev += total
+                evening_orders += 1
+        except Exception:
+            continue
+
+    # ----- Hourly revenue TODAY (Adelaide local hours 0-23) -----
+    hourly_today = [0.0] * 24
+    hourly_today_orders = [0] * 24
+    for o in today_orders:
+        try:
+            dt_utc = datetime.fromisoformat(o["created_at"].replace("Z", "+00:00"))
+            local_hour = int((dt_utc.hour + ADL_OFFSET) % 24)
+            hourly_today[local_hour] += o.get("total", 0)
+            hourly_today_orders[local_hour] += 1
+        except Exception:
+            continue
+    hourly_series = [
+        {"hour": f"{h:02d}:00", "revenue": round(hourly_today[h], 2), "orders": hourly_today_orders[h]}
+        for h in range(24)
+    ]
+
     return {
         "today_revenue": today_rev,
         "today_orders": len(today_orders),
@@ -50,6 +88,11 @@ async def stats(_: dict = Depends(get_current_admin)):
         "aov": aov,
         "repeat_customer_rate": repeat_rate,
         "daily_revenue_14d": series,
+        "morning_revenue": round(morning_rev, 2),
+        "evening_revenue": round(evening_rev, 2),
+        "morning_orders": morning_orders,
+        "evening_orders": evening_orders,
+        "hourly_revenue_today": hourly_series,
     }
 
 

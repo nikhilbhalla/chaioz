@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Star, Coffee, Moon, Heart, Smartphone, QrCode } from "lucide-react";
+import { ArrowRight, Star, Coffee, Moon, Heart, Smartphone, QrCode, Clock, Sunrise, Zap } from "lucide-react";
 import { api, fmtAUD } from "@/lib/api";
 import MenuItemCard from "@/components/MenuItemCard";
 import ItemCustomizeDialog from "@/components/ItemCustomizeDialog";
+import CombosStrip from "@/components/CombosStrip";
+import WelcomeBack from "@/components/WelcomeBack";
 import { useCart } from "@/contexts/CartContext";
+import { useDayMode } from "@/contexts/DayModeContext";
 
 const HERO_BG = "https://static.prod-images.emergentagent.com/jobs/7ffc6ec8-b182-4519-9a18-5bb47b9cfc96/images/0541d98d204de4f369b3369b8537f36258ac67b686df88d760a0cbf6cee08ece.png";
 const STORY_IMG = "https://images.pexels.com/photos/18413481/pexels-photo-18413481.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940";
@@ -17,6 +20,7 @@ export default function Landing() {
   const [bestsellers, setBestsellers] = useState([]);
   const [activeItem, setActiveItem] = useState(null);
   const { addItem } = useCart();
+  const { isMorning } = useDayMode();
 
   useEffect(() => {
     api.get("/menu/bestsellers").then((r) => setBestsellers(r.data || [])).catch(() => {});
@@ -40,49 +44,85 @@ export default function Landing() {
 
   return (
     <div data-testid="landing-page">
-      {/* HERO */}
+      {/* HERO — switches copy + CTA based on time of day */}
       <section className="relative pt-24 min-h-[90vh] flex items-end overflow-hidden">
         <img src={HERO_BG} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-chaioz-teal via-chaioz-teal/75 to-chaioz-teal/10" />
+        <div className={`absolute inset-0 bg-gradient-to-t ${isMorning ? "from-chaioz-saffron/90 via-chaioz-saffron/40 to-chaioz-cream/10" : "from-chaioz-teal via-chaioz-teal/75 to-chaioz-teal/10"}`} />
         <div className="absolute inset-0 grain opacity-30" />
         <div className="relative max-w-7xl mx-auto px-6 sm:px-8 pb-20 md:pb-32 w-full">
           <div className="max-w-3xl animate-fade-up">
             <span className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-chaioz-saffron mb-6">
-              <Moon className="w-3 h-3" /> North Adelaide
+              {isMorning ? <Sunrise className="w-3 h-3" /> : <Moon className="w-3 h-3" />} North Adelaide
             </span>
-            <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl leading-[0.9] tracking-tight text-chaioz-cream text-balance">
-              Your late-night
-              <br />
-              <span className="text-chaioz-saffron italic">chai ritual.</span>
-            </h1>
-            <p className="text-base md:text-lg text-chaioz-cream/85 mt-6 max-w-xl leading-relaxed">
-              Adelaide's first authentic Indian chai café. Brewed slow, served warm, made for the people who arrive when the city softens.
-            </p>
-            <div className="flex flex-wrap gap-3 mt-10">
-              <Link to="/menu" data-testid="hero-order-button">
-                <Button className="bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal rounded-full h-14 px-8 text-base">
-                  Order Pickup <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Link to="/loyalty" data-testid="hero-app-button">
-                <Button variant="outline" className="rounded-full h-14 px-8 text-base bg-transparent border-chaioz-cream/40 text-chaioz-cream hover:bg-chaioz-cream/10 hover:text-chaioz-saffron">
-                  <Smartphone className="w-4 h-4 mr-2" /> Download App
-                </Button>
-              </Link>
-            </div>
-            <div className="mt-12 flex items-center gap-6 text-xs text-chaioz-cream/70">
-              <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
-                <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
-                <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
-                <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
-                <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
-                <span className="ml-2 text-chaioz-cream/85">4.8 on Google · 1,200+ reviews</span>
-              </div>
-            </div>
+            {isMorning ? (
+              <>
+                <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl leading-[0.9] tracking-tight text-chaioz-teal text-balance">
+                  Good morning.
+                  <br />
+                  <span className="italic">Chai's brewing.</span>
+                </h1>
+                <p className="text-base md:text-lg text-chaioz-teal/85 mt-6 max-w-xl leading-relaxed">
+                  Bun maska, masala omelette wraps, karak chai — all hot, all under $12. Ready for pickup in 5–10 minutes.
+                </p>
+                <div className="flex flex-wrap gap-3 mt-10">
+                  <Link to="/menu?tag=quick_breakfast" data-testid="hero-order-button">
+                    <Button className="bg-chaioz-teal text-chaioz-cream hover:bg-chaioz-tealHover hover:text-chaioz-cream rounded-full h-14 px-8 text-base">
+                      Order Breakfast <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
+                  <Link to="/loyalty" data-testid="hero-app-button">
+                    <Button variant="outline" className="rounded-full h-14 px-8 text-base bg-white/80 border-chaioz-teal/20 text-chaioz-teal hover:bg-white hover:text-chaioz-teal">
+                      <Smartphone className="w-4 h-4 mr-2" /> Get the app
+                    </Button>
+                  </Link>
+                </div>
+                <p className="inline-flex items-center gap-2 text-xs text-chaioz-teal/80 mt-8 bg-white/60 backdrop-blur px-3 py-1.5 rounded-full">
+                  <Clock className="w-3.5 h-3.5 text-chaioz-teal" /> Ready in 5–10 mins · Pickup only
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl leading-[0.9] tracking-tight text-chaioz-cream text-balance">
+                  Your late-night
+                  <br />
+                  <span className="text-chaioz-saffron italic">chai ritual.</span>
+                </h1>
+                <p className="text-base md:text-lg text-chaioz-cream/85 mt-6 max-w-xl leading-relaxed">
+                  Adelaide's first authentic Indian chai café. Brewed slow, served warm, made for the people who arrive when the city softens.
+                </p>
+                <div className="flex flex-wrap gap-3 mt-10">
+                  <Link to="/menu" data-testid="hero-order-button">
+                    <Button className="bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal rounded-full h-14 px-8 text-base">
+                      Order Pickup <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
+                  <Link to="/loyalty" data-testid="hero-app-button">
+                    <Button variant="outline" className="rounded-full h-14 px-8 text-base bg-transparent border-chaioz-cream/40 text-chaioz-cream hover:bg-chaioz-cream/10 hover:text-chaioz-saffron">
+                      <Smartphone className="w-4 h-4 mr-2" /> Download App
+                    </Button>
+                  </Link>
+                </div>
+                <div className="mt-12 flex items-center gap-6 text-xs text-chaioz-cream/70">
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
+                    <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
+                    <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
+                    <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
+                    <Star className="w-4 h-4 fill-chaioz-saffron text-chaioz-saffron" />
+                    <span className="ml-2 text-chaioz-cream/85">4.8 on Google · 1,200+ reviews</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>
+
+      {/* Welcome back for returning customers */}
+      <WelcomeBack />
+
+      {/* Smart combos */}
+      <CombosStrip highlight={isMorning ? "brekie-combo" : "late-night-combo"} />
 
       {/* MARQUEE */}
       <section className="bg-chaioz-teal overflow-hidden border-y border-chaioz-teal">

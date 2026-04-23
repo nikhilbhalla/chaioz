@@ -16,12 +16,18 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Search, Truck } from "lucide-react";
+import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Search, Truck, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 import MenuItemEditor from "@/components/admin/MenuItemEditor";
 
@@ -99,17 +105,66 @@ export default function Admin() {
       )}
 
       {stats?.daily_revenue_14d && (
-        <div className="border border-chaioz-line bg-white rounded-2xl p-6 mb-10" data-testid="revenue-chart">
-          <h3 className="font-serif text-2xl text-chaioz-teal mb-4">Daily revenue (last 14 days)</h3>
-          <div className="h-64">
+        <div className="grid lg:grid-cols-[2fr_1fr] gap-5 mb-10">
+          <div className="border border-chaioz-line bg-white rounded-2xl p-6" data-testid="revenue-chart">
+            <h3 className="font-serif text-2xl text-chaioz-teal mb-4">Daily revenue (last 14 days)</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.daily_revenue_14d}>
+                  <CartesianGrid stroke="#E0DACE" strokeDasharray="3 3" />
+                  <XAxis dataKey="date" stroke="#6B7B7A" tick={{ fontSize: 11 }} />
+                  <YAxis stroke="#6B7B7A" tick={{ fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: "#FFFFFF", border: "1px solid #E0DACE", borderRadius: 8, color: "#0F4C4A" }} />
+                  <Line type="monotone" dataKey="revenue" stroke="#E8A84A" strokeWidth={2.5} dot={{ r: 3, fill: "#E8A84A" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="border border-chaioz-line bg-white rounded-2xl p-6" data-testid="morning-vs-evening">
+            <h3 className="font-serif text-2xl text-chaioz-teal mb-4">Morning vs Evening</h3>
+            <div className="h-44">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Morning (5am–2pm)", value: stats.morning_revenue || 0 },
+                      { name: "Evening (2pm–late)", value: stats.evening_revenue || 0 },
+                    ]}
+                    dataKey="value"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={2}
+                  >
+                    <Cell fill="#E8A84A" />
+                    <Cell fill="#0F4C4A" />
+                  </Pie>
+                  <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} contentStyle={{ background: "#FFFFFF", border: "1px solid #E0DACE", borderRadius: 8 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs mt-3">
+              <div className="flex items-center gap-1.5"><Sun className="w-3.5 h-3.5 text-chaioz-saffron"/> <span className="font-medium">{fmtAUD(stats.morning_revenue || 0)}</span> · {stats.morning_orders} ord</div>
+              <div className="flex items-center gap-1.5"><Moon className="w-3.5 h-3.5 text-chaioz-teal"/> <span className="font-medium">{fmtAUD(stats.evening_revenue || 0)}</span> · {stats.evening_orders} ord</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {stats?.hourly_revenue_today && (
+        <div className="border border-chaioz-line bg-white rounded-2xl p-6 mb-10" data-testid="hourly-revenue">
+          <h3 className="font-serif text-2xl text-chaioz-teal mb-4">Revenue by hour (today)</h3>
+          <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={stats.daily_revenue_14d}>
-                <CartesianGrid stroke="#1A2E2C" strokeDasharray="3 3" />
-                <XAxis dataKey="date" stroke="#A3A3A3" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#A3A3A3" tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: "#0A1413", border: "1px solid #1A2E2C", borderRadius: 8, color: "#FDFBF7" }} />
-                <Line type="monotone" dataKey="revenue" stroke="#E8A84A" strokeWidth={2.5} dot={{ r: 3, fill: "#E8A84A" }} />
-              </LineChart>
+              <BarChart data={stats.hourly_revenue_today}>
+                <CartesianGrid stroke="#E0DACE" strokeDasharray="3 3" />
+                <XAxis dataKey="hour" stroke="#6B7B7A" tick={{ fontSize: 10 }} interval={1} />
+                <YAxis stroke="#6B7B7A" tick={{ fontSize: 10 }} />
+                <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} contentStyle={{ background: "#FFFFFF", border: "1px solid #E0DACE", borderRadius: 8 }} />
+                <Bar dataKey="revenue" fill="#E8A84A" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>

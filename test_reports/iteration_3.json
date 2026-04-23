@@ -1,0 +1,47 @@
+{
+  "summary": "Chaioz Phase 1 — Iteration 5 e2e verification (both). Backend: 54/54 pytest pass in ~11s (20 iter1 regression + 21 iter2 regression + 13 NEW iter5 tests). Iter5 covers: /menu/combos shape + save_aud>0 on all 3 combos (Brekie, Late Night Ritual, Chai+Chaat), /menu/items returns tags array (Bun Maska has quick_breakfast + savoury), ?tag=quick_breakfast filter (27 items ≥6), ?tag=under_10 filter (all price<10), /orders/usual returns has_usual:false for fresh user then has_usual:true with matching item after order, /orders/{id}/reorder clones with new short_code + fulfillment=pickup + payment_method=square_mock + points_earned>0 (+ 401 on unauth + 404 for missing/other-user order), /admin/stats extra fields morning_revenue/evening_revenue/morning_orders/evening_orders/hourly_revenue_today (24 buckets), Square sandbox sync confirmed (square_order_id persists on new order within 8s). Fixed one stale regression in iter1 test (items count was hardcoded to 71 — bumped to >=71 since seed is now 73 with photos as per review).\n\nFrontend: Landing renders MORNING hero 'Good morning. Chai's brewing.' (auto mode in test window), DayModeToggle pill in header shows 'MORNING' and opens a dropdown (Auto/Morning/Evening), SMART COMBOS strip visible with all 3 combos + 3 save badges, AppDownloadBanner (Get 10% off — Download Chaioz App) appears. Menu page: deep link /menu?tag=quick_breakfast pre-activates the chip (bg-chaioz-teal visual active state confirmed) showing 27 items; all 7 filter chips present (QUICK BREAKFAST, READY IN 5 MINS, UNDER $10, LATE NIGHT FAVOURITE, VEGAN, SWEET, SAVOURY) + Clear; stacking Under $10 narrows from 27→24; Clear restores to 27. Admin dashboard (after login admin@chaioz.com.au/Chaioz@2026) renders: stats cards (today $268.83, 26 orders, AOV $10.16, 50% repeat), Daily revenue 14d line chart, 'Morning vs Evening' PieChart (2 recharts sectors, Morning $0 / Evening $396.27 for 14d), 'Revenue by hour (today)' BarChart with 24 hourly buckets and bars at 17:00 + 18:00.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin dashboard", "issues": ["Morning vs Evening pie shows Morning=$0 across 14d in test env despite 'Morning' auto-mode on landing; data is correct for test window (all orders placed late afternoon UTC which falls in Evening bucket after +9:30 Adelaide offset), but a small empty-state hint (e.g. 'no morning orders yet this fortnight') would read better when Morning=$0 renders as an almost-invisible pie slice."]},
+      {"screen": "Console", "issues": ["401 still logged to browser console from /api/auth/me probe on anonymous page loads (same cosmetic issue flagged in iter2); non-blocking."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_chaioz_phase1_iter5.py",
+    "/app/backend/tests/test_chaioz_phase1_iter2.py",
+    "/app/backend/tests/test_chaioz_api.py",
+    "/app/test_reports/pytest/iter5_full_results.xml",
+    "/app/test_reports/pytest/iter5_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Silence expected 401 from /auth/me on anonymous page load (AuthContext) — carried over from iter2.",
+    "(Optional) Add empty-state label to Morning vs Evening pie when one bucket is zero to avoid a near-invisible slice.",
+    "(Optional) /orders/usual normalises item_name by stripping ' (Regular)' but some size suffixes use other separators — verify ' - Large' / ' (Iced)' etc. all normalise correctly if multi-size SKUs are added later."
+  ],
+  "critical_code_review_comments": [
+    "orders.py reorder endpoint copies items dict with `{**i, 'notes': i.get('notes')}` — this works for OrderLineItem fields but does not revalidate via Pydantic. If original order was stored with legacy fields (missing 'price' for example) the new Order() construction would throw 422 and surface as 500 here. Consider wrapping Order() in try/except and returning 422 with the upstream error.",
+    "orders.py reorder recomputes points_earned as int(subtotal*10) but uses original['subtotal'] — if the original had a delivery_fee baked into total, points are still based on subtotal (good). However new order sets total=subtotal with no tax — if tax logic is added later this is a silent drift.",
+    "admin.py /stats uses ADL_OFFSET=9.5 constant — Adelaide observes DST (ACDT = UTC+10:30). Hardcoded 9.5 will under/over-shift by 1 hour during DST months. Low impact for pie/hourly charts but flag.",
+    "menu.py _derive_tags tags items purely from name regex — fragile if a future admin creates 'Bun Maska Deluxe' it would still match 'bun'/'maska' heuristics. Consider storing a `tags` field on MenuItem and falling back to derived tags only when empty.",
+    "menu.py /combos picks hardcoded item names; if an admin renames 'Masala Chai' the Late Night combo breaks silently (items_detail shrinks, original_price drops, save_aud could go negative — route clamps with max(0, ...), but UX shows a partial combo). Store combos in DB or reference items by stable id.",
+    "Landing DayModeToggle opens a MenuMode dropdown (Auto/Morning/Evening) rather than directly toggling — this is intentional but review expected 'toggle works via header DayModeToggle'. Works correctly; just note it is a popover, not a 2-state switch.",
+    "AppDownloadBanner appears immediately in my test run rather than after ~8s (possibly already dismissed + re-armed via hot reload, or the 8s timer is shorter in-code). Non-blocking but verify timer delay in production build."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_chaioz_phase1_iter5.py",
+    "/app/backend/tests/test_chaioz_api.py",
+    "/app/test_reports/pytest/iter5_results.xml",
+    "/app/test_reports/pytest/iter5_full_results.xml",
+    "/app/test_reports/iteration_3.json"
+  ],
+  "success_rate": {"backend": "100% (54/54)", "frontend": "100% — all iter5 UI surfaces (landing hero + combos, day-mode toggle popover, app download banner, menu filter chips + deep link, admin pie + bar charts) render and behave correctly."},
+  "test_credentials": "Admin: admin@chaioz.com.au / Chaioz@2026. Fresh users registered dynamically (TEST_iter5_<uuid>@example.com / Testpass@2026).",
+  "seed_data_creation": "Tests register 1 fresh test user and place 2 orders on their account (cleanup not strictly needed — test emails prefixed TEST_iter5_). No menu mutations.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend at https://late-night-chai-1.preview.emergentagent.com/api. 54 pytest tests in /app/backend/tests/ cover iter1+iter2+iter5. OrderLineItem schema requires fields: item_id, name, price, qty, line_total (note: field is 'price' NOT 'unit_price' — iter5 tests initially failed on this and were corrected). Square sandbox is LIVE and persists square_order_id within ~3-8s on background task. Menu filter chip testids not explicitly set — chips are selected by innerText regex in current UI. DayModeToggle opens a popover with 3 options (Auto/Morning/Evening), does not 2-state toggle on single click. Admin chart classes: svg.recharts-surface (3 present on Admin), .recharts-pie-sector, .recharts-bar-rectangle/rectangle. /orders/usual strips ' (Regular)' suffix when normalising item name.",
+  "rca_of_the_issue": "No product bugs found. All 13 new iter5 backend tests and all 41 prior regression tests pass. Only fix applied was to a stale hardcoded count assertion in iter1 (71→>=71) to accept the current 73-item seed with photos. Iter5 UI deltas (hero branching, combos strip, menu chips + deep link, admin pie/bar charts) all render and integrate with the backend correctly."
+}

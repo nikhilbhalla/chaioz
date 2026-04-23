@@ -1,13 +1,58 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingBag, Star } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/contexts/CartContext";
-import { fmtAUD } from "@/lib/api";
+import { api, fmtAUD } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
+const UPSELL_BY_KEYWORD = [
+  { keywords: ["chai", "coffee", "matcha"], target_name: "Pistachio Milkcake", copy: "Treat yourself — add" },
+  { keywords: ["milkcake", "churros", "jamun", "halwa"], target_name: "Masala Chai", copy: "Pair with" },
+  { keywords: ["wrap", "bowl", "toastie", "sandwich"], target_name: "Masala Chips", copy: "Add a side of" },
+];
 
 export default function CartDrawer() {
-  const { items, open, setOpen, updateQty, removeItem, totals } = useCart();
+  const { items, open, setOpen, updateQty, removeItem, totals, addItem } = useCart();
   const nav = useNavigate();
+  const [upsell, setUpsell] = useState(null);
+
+  useEffect(() => {
+    if (!open || items.length === 0) return;
+    // Pick the first matching upsell rule based on what's in the cart (and target not already there)
+    const names = items.map((i) => (i.name || "").toLowerCase());
+    const rule = UPSELL_BY_KEYWORD.find((r) => {
+      const match = names.some((n) => r.keywords.some((k) => n.includes(k)));
+      const present = names.some((n) => n.includes(r.target_name.toLowerCase()));
+      return match && !present;
+    });
+    if (!rule) {
+      setUpsell(null);
+      return;
+    }
+    api.get("/menu/items", { params: { q: rule.target_name } }).then((res) => {
+      const exact = (res.data || []).find((x) => x.name === rule.target_name);
+      if (exact) setUpsell({ item: exact, copy: rule.copy });
+    });
+  }, [open, items]);
+
+  const acceptUpsell = () => {
+    if (!upsell?.item) return;
+    const it = upsell.item;
+    addItem({
+      item_id: it.id,
+      name: it.name,
+      price: it.price,
+      qty: 1,
+      size: null,
+      addons: [],
+      notes: null,
+      line_total: it.price,
+    });
+    toast.success(`${it.name} added`);
+    setUpsell(null);
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -58,10 +103,29 @@ export default function CartDrawer() {
             </div>
           ))}
 
-          {items.length > 0 && (
-            <div className="mt-6 p-4 border border-dashed border-chaioz-saffron/40 rounded-xl bg-chaioz-saffron/5 text-sm">
-              <span className="text-chaioz-saffron font-medium">Treat yourself —</span>{" "}
-              add a Pistachio Milkcake for $9.95.
+          {upsell?.item && items.length > 0 && (
+            <div
+              data-testid="cart-upsell"
+              className="mt-4 p-4 border-2 border-dashed border-chaioz-saffron/50 rounded-xl bg-chaioz-saffronSoft/30 flex items-center gap-3"
+            >
+              {upsell.item.image && (
+                <img src={upsell.item.image} alt="" className="w-14 h-14 rounded-lg object-cover" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs uppercase tracking-wider text-chaioz-saffron flex items-center gap-1">
+                  <Star className="w-3 h-3" /> {upsell.copy}
+                </p>
+                <p className="text-sm font-medium mt-0.5 truncate">{upsell.item.name}</p>
+                <p className="text-xs text-chaioz-teal/65">for just {fmtAUD(upsell.item.price)}</p>
+              </div>
+              <Button
+                size="sm"
+                onClick={acceptUpsell}
+                data-testid="cart-upsell-add"
+                className="rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal whitespace-nowrap"
+              >
+                <Plus className="w-3 h-3 mr-1" /> Add
+              </Button>
             </div>
           )}
         </div>

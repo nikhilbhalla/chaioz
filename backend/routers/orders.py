@@ -59,7 +59,6 @@ async def create_order(
     doc = order.model_dump()
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
 
-    # Delivery dispatch
     if payload.fulfillment == "delivery" and payload.delivery_address:
         try:
             d = create_delivery(
@@ -75,12 +74,10 @@ async def create_order(
             doc["uber_tracking_url"] = d.get("tracking_url")
             doc["delivery_status"] = d.get("status", "pending")
         except Exception:
-            # Don't fail the order if dispatch fails — mark and let admin recover
             doc["delivery_status"] = "dispatch_failed"
 
     await db.orders.insert_one(doc)
 
-    # Loyalty accrual (only on subtotal — not delivery fee)
     points_earned = 0
     if user:
         points_earned = int(subtotal * 10)
@@ -91,7 +88,6 @@ async def create_order(
             {"$set": {"loyalty_points": new_pts, "loyalty_tier": new_tier}}
         )
 
-    # Confirmation email (async)
     if payload.customer_email:
         pickup_local = datetime.fromisoformat(payload.pickup_time.replace("Z", "+00:00")).strftime("%I:%M %p")
         bg.add_task(
@@ -107,15 +103,15 @@ async def create_order(
             ),
         )
 
-    # Push order to Square POS so staff see it on their existing tablet/KDS
-    if square_configured():
-        bg.add_task(sync_order_async, order.id, doc)
-    # Mark any abandoned cart for this user as recovered
     if payload.customer_email:
         await db.abandoned_carts.update_one(
             {"key": payload.customer_email},
             {"$set": {"recovered_at": datetime.now(timezone.utc).isoformat()}},
         )
+
+    # Push to Square POS → staff KDS (non-blocking)
+    if square_configured():
+        bg.add_task(sync_order_async, order.id, doc)
 
     doc.pop("_id", None)
     doc["points_earned"] = points_earned
@@ -127,6 +123,80 @@ async def my_orders(user: dict = Depends(get_current_user)):
     from server import db
     orders = await db.orders.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
     return orders
+
+
+@router.get("/usual")
+async def my_usual(user: dict = Depends(get_current_user)):
+    """Returns the user's most-ordered item name (for 'Your usual?' prompt)."""
+    from server import db
+    orders = await db.orders.find({"user_id": user["id"]}, {"_id": 0, "items": 1}).to_list(200)
+    counts: dict = {}
+    for o in orders:
+        for i in o.get("items", []):
+            # normalise — strip size suffix like " (Regular)"
+            base = i["name"].split(" (")[0]
+            counts[base] = counts.get(base, 0) + i.get("qty", 1)
+    if not counts:
+        return {"has_usual": False}
+    top_name = max(counts, key=counts.get)
+    item = await db.menu_items.find_one(
+        {"name": {"$regex": f"^{top_name}$", "$options": "i"}},
+        {"_id": 0},
+    )
+    return {
+        "has_usual": True,
+        "item_name": top_name,
+        "order_count": counts[top_name],
+        "item": item,
+    }
+
+
+@router.post("/{order_id}/reorder")
+async def reorder(order_id: str, bg: BackgroundTasks, user: dict = Depends(get_current_user)):
+    """Clone a past order into a new one (1-click reorder)."""
+    from server import db
+    original = await db.orders.find_one({"id": order_id, "user_id": user["id"]}, {"_id": 0})
+    if not original:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Build new order from original
+    items = [
+        {**i, "notes": i.get("notes")}
+        for i in original["items"]
+    ]
+    new_order = Order(
+        user_id=user["id"],
+        items=items,
+        subtotal=original["subtotal"],
+        discount=0.0,
+        delivery_fee=0.0,
+        total=original["subtotal"],
+        pickup_time=datetime.now(timezone.utc).isoformat(),
+        customer_name=original["customer_name"],
+        customer_phone=original["customer_phone"],
+        customer_email=original.get("customer_email"),
+        notes="Reorder of #" + original.get("short_code", ""),
+        payment_method="square_mock",
+        payment_status="paid",
+        fulfillment="pickup",
+    )
+    doc = new_order.model_dump()
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.orders.insert_one(doc)
+
+    points_earned = int(new_order.subtotal * 10)
+    new_pts = user.get("loyalty_points", 0) + points_earned
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"loyalty_points": new_pts, "loyalty_tier": _calc_loyalty_tier(new_pts)}}
+    )
+
+    if square_configured():
+        bg.add_task(sync_order_async, new_order.id, doc)
+
+    doc.pop("_id", None)
+    doc["points_earned"] = points_earned
+    return doc
 
 
 @router.get("/{order_id}")

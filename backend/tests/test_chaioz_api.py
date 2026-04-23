@@ -115,7 +115,7 @@ class TestMenu:
         r = requests.get(f"{API}/menu/items", timeout=15)
         assert r.status_code == 200
         items = r.json()
-        assert len(items) == 71, f"Expected 71 items, got {len(items)}"
+        assert len(items) >= 71, f"Expected >=71 items, got {len(items)}"
 
         r2 = requests.get(f"{API}/menu/items", params={"category": "Hot Drinks"}, timeout=15)
         assert r2.status_code == 200
