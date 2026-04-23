@@ -12,6 +12,7 @@ from services.notifications import (
     order_confirmation_email_html,
     order_ready_sms,
 )
+from services.square_pos import sync_order_async, is_configured as square_configured
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -105,6 +106,10 @@ async def create_order(
                 pickup_local,
             ),
         )
+
+    # Push order to Square POS so staff see it on their existing tablet/KDS
+    if square_configured():
+        bg.add_task(sync_order_async, order.id, doc)
     # Mark any abandoned cart for this user as recovered
     if payload.customer_email:
         await db.abandoned_carts.update_one(
