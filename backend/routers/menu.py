@@ -51,7 +51,11 @@ def _derive_tags(item: dict) -> list:
 
 
 def _with_tags(item: dict) -> dict:
-    item["tags"] = _derive_tags(item)
+    """Prefer admin-stored tags if present; fall back to derived tags otherwise."""
+    stored = item.get("tags") or []
+    # Filter truthy strings only (defensive against legacy docs)
+    stored = [t for t in stored if isinstance(t, str) and t]
+    item["tags"] = stored if stored else _derive_tags(item)
     return item
 
 
@@ -104,14 +108,15 @@ async def get_bestsellers():
 
 @router.get("/combos")
 async def get_combos():
-    """Smart curated combos with savings."""
+    """Curated combos with savings. Prefers combos stored in the DB (admin can
+    override); falls back to sensible defaults when the collection is empty."""
     from server import db
     items_by_name = {i["name"]: i async for i in db.menu_items.find({"is_available": True}, {"_id": 0})}
 
     def total(names):
         return round(sum(items_by_name.get(n, {}).get("price", 0) for n in names), 2)
 
-    combos = [
+    default_combos = [
         {
             "id": "brekie-combo",
             "name": "Brekie Combo",
@@ -120,6 +125,8 @@ async def get_combos():
             "bundle_price": 8.50,
             "badge": "Most popular",
             "icon": "sunrise",
+            "is_active": True,
+            "sort_order": 1,
         },
         {
             "id": "late-night-combo",
@@ -129,6 +136,8 @@ async def get_combos():
             "bundle_price": 12.90,
             "badge": "Best value",
             "icon": "moon",
+            "is_active": True,
+            "sort_order": 2,
         },
         {
             "id": "chaat-combo",
@@ -138,14 +147,23 @@ async def get_combos():
             "bundle_price": 14.50,
             "badge": "Crowd favourite",
             "icon": "sparkles",
+            "is_active": True,
+            "sort_order": 3,
         },
     ]
+
+    stored = await db.combos.find({"is_active": {"$ne": False}}, {"_id": 0}).sort("sort_order", 1).to_list(100)
+    combos = stored if stored else default_combos
+
     out = []
     for c in combos:
         original = total(c["items"])
-        savings = round(original - c["bundle_price"], 2)
-        # Resolve full item details
+        savings = round(original - float(c.get("bundle_price", 0)), 2)
+        # Resolve full item details; skip combos where nothing matches (avoids
+        # silently broken combos when an admin renames a referenced item).
         resolved = [items_by_name[n] for n in c["items"] if n in items_by_name]
+        if not resolved:
+            continue
         out.append({
             **c,
             "items_detail": resolved,

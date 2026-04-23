@@ -7,7 +7,7 @@ import os
 import uuid
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 logger = logging.getLogger("chaioz.square")
@@ -59,6 +59,40 @@ def _cents(aud: float) -> int:
     return int(round(aud * 100))
 
 
+def _ensure_rfc3339(ts: str, fallback_minutes: int = 15) -> str:
+    """Return a valid RFC3339 ISO-8601 timestamp. Square rejects anything else
+    (notably the literal 'ASAP'). If the incoming string cannot be parsed, fall
+    back to now + `fallback_minutes`."""
+    if ts:
+        try:
+            # Accept 'Z' suffix as a synonym for '+00:00'
+            candidate = ts.replace("Z", "+00:00") if ts.endswith("Z") else ts
+            parsed = datetime.fromisoformat(candidate)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            out = parsed.isoformat()
+            return out.replace("+00:00", "Z") if out.endswith("+00:00") else out
+        except Exception:
+            pass
+    fut = datetime.now(timezone.utc) + timedelta(minutes=fallback_minutes)
+    return fut.isoformat().replace("+00:00", "Z")
+
+
+def _serialize_square_error(e: Exception) -> str:
+    """Square SDK v44 ApiError exposes `.body` (dict) + `.status_code`. Prefer
+    that over str(e) which dumps headers first and gets truncated before the
+    actual error payload."""
+    body = getattr(e, "body", None)
+    status = getattr(e, "status_code", None)
+    if body is not None:
+        try:
+            import json as _json
+            return f"{status} {_json.dumps(body)}"[:2000]
+        except Exception:
+            return f"{status} {body}"[:2000]
+    return str(e)[:2000]
+
+
 async def push_order_to_square(order: dict) -> dict:
     """Create a corresponding order in Square POS. Graceful: never raises."""
     client = _get_client()
@@ -80,9 +114,8 @@ async def push_order_to_square(order: dict) -> dict:
     fulfillment_type = "DELIVERY" if order.get("fulfillment") == "delivery" else "PICKUP"
     phone = _format_phone_e164(order.get("customer_phone", ""))
 
-    pickup_iso = order.get("pickup_time") or datetime.now(timezone.utc).isoformat()
-    if pickup_iso.endswith("+00:00"):
-        pickup_iso = pickup_iso.replace("+00:00", "Z")
+    # Square requires RFC3339. Guard against 'ASAP' / empty / legacy values.
+    pickup_iso = _ensure_rfc3339(order.get("pickup_time") or "")
 
     fulfillment = {"type": fulfillment_type}
     if fulfillment_type == "PICKUP":
@@ -109,6 +142,8 @@ async def push_order_to_square(order: dict) -> dict:
                     "country": addr.get("country", "AU"),
                 },
             },
+            "schedule_type": "SCHEDULED",
+            "deliver_at": pickup_iso,
             "note": (order.get("notes") or "")[:500],
         }
 
@@ -133,8 +168,9 @@ async def push_order_to_square(order: dict) -> dict:
         logger.error("Square create returned no order: %s", resp)
         return {"success": False, "square_order_id": None, "error": "no order in response"}
     except Exception as e:
-        logger.exception("Square push exception")
-        return {"success": False, "square_order_id": None, "error": str(e)}
+        err = _serialize_square_error(e)
+        logger.exception("Square push exception: %s", err)
+        return {"success": False, "square_order_id": None, "error": err}
 
 
 async def create_sandbox_payment(square_order_id: str, total_aud: float) -> dict:
@@ -159,8 +195,9 @@ async def create_sandbox_payment(square_order_id: str, total_aud: float) -> dict
         logger.warning("Square payment returned no payment: %s", resp)
         return {"success": False, "error": "no payment in response"}
     except Exception as e:
-        logger.exception("Square payment exception")
-        return {"success": False, "error": str(e)}
+        err = _serialize_square_error(e)
+        logger.exception("Square payment exception: %s", err)
+        return {"success": False, "error": err}
 
 
 async def sync_order_async(order_id: str, order_doc: dict, max_retries: int = 3):
@@ -187,7 +224,7 @@ async def sync_order_async(order_id: str, order_doc: dict, max_retries: int = 3)
     await db.orders.update_one(
         {"id": order_id},
         {"$set": {
-            "square_sync_error": (last_err or "unknown")[:500],
+            "square_sync_error": (last_err or "unknown")[:2000],
             "square_sync_failed_at": datetime.now(timezone.utc).isoformat(),
         }},
     )

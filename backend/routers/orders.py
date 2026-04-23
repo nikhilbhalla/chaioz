@@ -125,6 +125,27 @@ async def my_orders(user: dict = Depends(get_current_user)):
     return orders
 
 
+import re
+
+_SIZE_SUFFIX_RE = re.compile(
+    r"\s*(?:\((Regular|Large|Small|Medium|Iced|Hot)\)|[-–—:]\s*(Regular|Large|Small|Medium|Iced|Hot))\s*$",
+    flags=re.IGNORECASE,
+)
+
+
+def _normalise_item_name(name: str) -> str:
+    """Strip size/variant suffix (e.g. ' (Regular)', ' - Large', ': Iced')."""
+    if not name:
+        return name
+    prev = None
+    out = name
+    # Strip iteratively in case multiple suffixes were appended
+    while prev != out:
+        prev = out
+        out = _SIZE_SUFFIX_RE.sub("", out).strip()
+    return out
+
+
 @router.get("/usual")
 async def my_usual(user: dict = Depends(get_current_user)):
     """Returns the user's most-ordered item name (for 'Your usual?' prompt)."""
@@ -133,14 +154,15 @@ async def my_usual(user: dict = Depends(get_current_user)):
     counts: dict = {}
     for o in orders:
         for i in o.get("items", []):
-            # normalise — strip size suffix like " (Regular)"
-            base = i["name"].split(" (")[0]
+            base = _normalise_item_name(i.get("name", ""))
+            if not base:
+                continue
             counts[base] = counts.get(base, 0) + i.get("qty", 1)
     if not counts:
         return {"has_usual": False}
     top_name = max(counts, key=counts.get)
     item = await db.menu_items.find_one(
-        {"name": {"$regex": f"^{top_name}$", "$options": "i"}},
+        {"name": {"$regex": f"^{re.escape(top_name)}$", "$options": "i"}},
         {"_id": 0},
     )
     return {
@@ -159,27 +181,32 @@ async def reorder(order_id: str, bg: BackgroundTasks, user: dict = Depends(get_c
     if not original:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Build new order from original
+    # Build new order from original — guard against legacy docs that may be
+    # missing required OrderLineItem/Order fields (e.g. 'price', 'line_total').
     items = [
         {**i, "notes": i.get("notes")}
-        for i in original["items"]
+        for i in original.get("items", [])
     ]
-    new_order = Order(
-        user_id=user["id"],
-        items=items,
-        subtotal=original["subtotal"],
-        discount=0.0,
-        delivery_fee=0.0,
-        total=original["subtotal"],
-        pickup_time=datetime.now(timezone.utc).isoformat(),
-        customer_name=original["customer_name"],
-        customer_phone=original["customer_phone"],
-        customer_email=original.get("customer_email"),
-        notes="Reorder of #" + original.get("short_code", ""),
-        payment_method="square_mock",
-        payment_status="paid",
-        fulfillment="pickup",
-    )
+    try:
+        new_order = Order(
+            user_id=user["id"],
+            items=items,
+            subtotal=original.get("subtotal", 0.0),
+            discount=0.0,
+            delivery_fee=0.0,
+            total=original.get("subtotal", 0.0),
+            pickup_time=datetime.now(timezone.utc).isoformat(),
+            customer_name=original["customer_name"],
+            customer_phone=original["customer_phone"],
+            customer_email=original.get("customer_email"),
+            notes="Reorder of #" + original.get("short_code", ""),
+            payment_method="square_mock",
+            payment_status="paid",
+            fulfillment="pickup",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"Original order cannot be reordered: {e}")
+
     doc = new_order.model_dump()
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.orders.insert_one(doc)

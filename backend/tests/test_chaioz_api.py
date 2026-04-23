@@ -79,7 +79,10 @@ class TestAuth:
 
     def test_me_unauth(self):
         r = requests.get(f"{API}/auth/me", timeout=15)
-        assert r.status_code == 401
+        # iter6: anonymous /auth/me now returns 200 + null (was 401) to avoid
+        # browser console spam on anonymous landing page loads.
+        assert r.status_code == 200
+        assert r.json() is None
 
     def test_login_invalid_credentials(self):
         r = requests.post(f"{API}/auth/login", json={"email": ADMIN_EMAIL, "password": "wrong"}, timeout=15)
@@ -94,10 +97,11 @@ class TestAuth:
         assert r.status_code == 200
         r2 = s.post(f"{API}/auth/logout", timeout=15)
         assert r2.status_code == 200
-        # After logout, /me should return 401
+        # After logout, /me should return 200 + null (iter6 change)
         s.cookies.clear()  # server delete_cookie might not propagate through proxy; clear client too
         r3 = s.get(f"{API}/auth/me", timeout=15)
-        assert r3.status_code == 401
+        assert r3.status_code == 200
+        assert r3.json() is None
 
 
 # ---------- Menu ----------

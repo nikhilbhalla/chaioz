@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Chaioz",
+    "slug": "chaioz",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "chaioz",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "bundleIdentifier": "com.chaioz.app",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.chaioz.app"
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "extra": {
+      "apiBaseUrl": "https://late-night-chai-1.preview.emergentagent.com"
+    }
+  }
+}

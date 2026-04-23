@@ -8,6 +8,7 @@ from auth_utils import (
     verify_password,
     create_access_token,
     get_current_user,
+    get_optional_user,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -74,12 +75,29 @@ async def login(payload: LoginRequest, response: Response):
     return _public_user(user)
 
 
+@router.post("/token")
+async def issue_token(payload: LoginRequest):
+    """Mobile/API clients that cannot read HttpOnly cookies.
+    Returns the JWT in the response body for Authorization: Bearer usage."""
+    from server import db
+    email = payload.email.lower()
+    user = await db.users.find_one({"email": email})
+    if not user or not verify_password(payload.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token(user["id"], user["email"], user.get("role", "customer"))
+    return {"access_token": token, "token_type": "bearer", "user": _public_user(user)}
+
+
 @router.post("/logout")
 async def logout(response: Response):
     response.delete_cookie("access_token", path="/")
     return {"ok": True}
 
 
-@router.get("/me", response_model=UserPublic)
-async def me(user: dict = Depends(get_current_user)):
+@router.get("/me")
+async def me(user: dict | None = Depends(get_optional_user)):
+    """Returns the current user or null. Uses 200+null for anonymous so
+    front-end probes don't spam the browser console with 401s."""
+    if not user:
+        return None
     return _public_user(user)

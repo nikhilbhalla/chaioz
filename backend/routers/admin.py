@@ -1,11 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import uuid
 
 from auth_utils import get_current_admin
 from services.notifications import send_sms, format_au_phone, order_ready_sms
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+ADELAIDE_TZ = ZoneInfo("Australia/Adelaide")
+
+
+def _local_hour(created_at: str) -> int:
+    """Parse an ISO timestamp and return the Adelaide local hour (DST-aware)."""
+    dt_utc = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+    if dt_utc.tzinfo is None:
+        dt_utc = dt_utc.replace(tzinfo=timezone.utc)
+    return dt_utc.astimezone(ADELAIDE_TZ).hour
 
 
 @router.get("/stats")
@@ -43,17 +54,15 @@ async def stats(_: dict = Depends(get_current_admin)):
         d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
         series.append({"date": d, "revenue": round(daily.get(d, 0), 2)})
 
-    # ----- Morning vs Evening split (last 14d by Adelaide local time — UTC+9:30 approx) -----
+    # ----- Morning vs Evening split (last 30d, Adelaide local time — DST-aware) -----
     # Morning: 5am–2pm local. Evening: 2pm–late.
-    ADL_OFFSET = 9.5  # hours
     morning_rev = 0.0
     evening_rev = 0.0
     morning_orders = 0
     evening_orders = 0
     for o in month_orders:
         try:
-            dt_utc = datetime.fromisoformat(o["created_at"].replace("Z", "+00:00"))
-            local_hour = (dt_utc.hour + ADL_OFFSET) % 24
+            local_hour = _local_hour(o["created_at"])
             total = o.get("total", 0)
             if 5 <= local_hour < 14:
                 morning_rev += total
@@ -64,13 +73,12 @@ async def stats(_: dict = Depends(get_current_admin)):
         except Exception:
             continue
 
-    # ----- Hourly revenue TODAY (Adelaide local hours 0-23) -----
+    # ----- Hourly revenue TODAY (Adelaide local hours 0-23, DST-aware) -----
     hourly_today = [0.0] * 24
     hourly_today_orders = [0] * 24
     for o in today_orders:
         try:
-            dt_utc = datetime.fromisoformat(o["created_at"].replace("Z", "+00:00"))
-            local_hour = int((dt_utc.hour + ADL_OFFSET) % 24)
+            local_hour = _local_hour(o["created_at"])
             hourly_today[local_hour] += o.get("total", 0)
             hourly_today_orders[local_hour] += 1
         except Exception:
@@ -153,6 +161,7 @@ async def create_menu_item(payload: dict, _: dict = Depends(get_current_admin)):
         "is_vegan": bool(payload.get("is_vegan", False)),
         "is_available": True,
         "sort_order": int(payload.get("sort_order", 999)),
+        "tags": [t for t in (payload.get("tags") or []) if isinstance(t, str) and t],
     }
     await db.menu_items.insert_one(doc)
     doc.pop("_id", None)
@@ -179,6 +188,56 @@ async def delete_menu(item_id: str, _: dict = Depends(get_current_admin)):
     res = await db.menu_items.delete_one({"id": item_id})
     if not res.deleted_count:
         raise HTTPException(status_code=404, detail="Item not found")
+    return {"ok": True}
+
+
+# ---------- Combos ----------
+@router.get("/combos")
+async def list_combos_admin(_: dict = Depends(get_current_admin)):
+    from server import db
+    return await db.combos.find({}, {"_id": 0}).sort("sort_order", 1).to_list(100)
+
+
+@router.post("/combos")
+async def create_combo(payload: dict, _: dict = Depends(get_current_admin)):
+    from server import db
+    if not payload.get("name") or not payload.get("items") or payload.get("bundle_price") is None:
+        raise HTTPException(status_code=400, detail="name, items, bundle_price required")
+    doc = {
+        "id": payload.get("id") or str(uuid.uuid4()),
+        "name": payload["name"],
+        "tagline": payload.get("tagline", ""),
+        "items": list(payload["items"]),
+        "bundle_price": float(payload["bundle_price"]),
+        "badge": payload.get("badge", ""),
+        "icon": payload.get("icon", "sparkles"),
+        "is_active": bool(payload.get("is_active", True)),
+        "sort_order": int(payload.get("sort_order", 999)),
+    }
+    await db.combos.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.put("/combos/{combo_id}")
+async def update_combo(combo_id: str, payload: dict, _: dict = Depends(get_current_admin)):
+    from server import db
+    payload.pop("_id", None)
+    payload.pop("id", None)
+    if "bundle_price" in payload and payload["bundle_price"] is not None:
+        payload["bundle_price"] = float(payload["bundle_price"])
+    res = await db.combos.update_one({"id": combo_id}, {"$set": payload})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Combo not found")
+    return {"ok": True}
+
+
+@router.delete("/combos/{combo_id}")
+async def delete_combo(combo_id: str, _: dict = Depends(get_current_admin)):
+    from server import db
+    res = await db.combos.delete_one({"id": combo_id})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="Combo not found")
     return {"ok": True}
 
 

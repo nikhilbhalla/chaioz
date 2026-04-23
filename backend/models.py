@@ -56,6 +56,7 @@ class MenuItem(BaseModel):
     is_vegan: bool = False
     is_available: bool = True
     sort_order: int = 0
+    tags: List[str] = []            # admin-override tags; takes precedence over name-derived tags
 
 
 # ---------- Cart / Orders ----------

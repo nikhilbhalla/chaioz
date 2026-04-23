@@ -1,0 +1,58 @@
+{
+  "summary": "Chaioz Phase 1 — Iteration 6 targeted verification (both). Added /app/backend/tests/test_chaioz_phase1_iter6.py with 17 new tests covering every bullet in the review. Result: 15/17 new iter6 pass, 68/71 full-suite pass. Two critical failures (test_asap_pickup_order_syncs_to_square and test_delivery_order_syncs_to_square) expose an UNFIXED bug — the ASAP literal fix was applied in services/square_pos.py (_ensure_rfc3339) but was NOT applied in routers/orders.py line 92 where `datetime.fromisoformat(payload.pickup_time.replace('Z','+00:00'))` is still called unconditionally to format the email pickup_local string. When pickup_time='ASAP' AND customer_email is provided, this raises ValueError → 500 Internal Server Error. Order never reaches the DB. Square sync with valid ISO pickup_time works (test_valid_iso_pickup_time_syncs_to_square PASS). Fixed 2 stale regression tests in test_chaioz_api.py (test_me_unauth + test_logout_clears_cookie) because /auth/me intentionally now returns 200+null instead of 401.\n\nAll other iter6 changes verified green: /auth/me anon → 200+null (confirmed on frontend: 0× 401 from /api/auth/me network + 0× console 401 msgs on anonymous landing load), /auth/token + Bearer e2e (register→token→Bearer /me→Bearer /orders→Bearer /orders/me→Bearer /orders/{id}/reorder all pass without a cookie jar), admin stats has morning/evening/hourly_revenue_today (24 buckets) with DST-aware zoneinfo, MenuItem tags override (admin POST tags=[vegan,under_10] returned verbatim, falls back to derived tags on Bun Maska), /menu/combos now reads from db.combos (3 seeded: Brekie/Late Night Ritual/Chai+Chaat, all with save_aud>0 + items_detail), admin CRUD on /api/admin/combos (create/update/delete with admin cookie), broken combo (all items non-existent) is correctly skipped, reorder happy-path returns 200 with clone, reorder on NO_SUCH_ORDER returns 404, /orders/usual aggregates 4 different size-suffix patterns ('(Regular)', ' - Large', ': Iced', ' — Small') into the normalised 'Karak Classic' with order_count>=4.\n\nFrontend: Landing renders Morning hero 'Good morning. Chai's brewing.', MORNING day-mode pill, Smart Combos strip (Brekie, Late Night Ritual, Chai + Chaat), and critically zero /api/auth/me 401s in network tab or console. Admin dashboard (logged in as admin) renders stats cards + line chart + pie (1 sector, me-pie-hint testid visible since one bucket is $0) + 24-bar hourly chart.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/orders",
+        "issue": "pickup_time='ASAP' + customer_email set → 500 Internal Server Error. Root cause: routers/orders.py line 92 calls `datetime.fromisoformat(payload.pickup_time.replace('Z','+00:00'))` unconditionally when building the email confirmation. ValueError: Invalid isoformat string: 'ASAP'. Claimed-fixed in square_pos.py but the email-formatting path was missed. This is the EXACT scenario in review bullet #1 and #2 (both fail). Affects pickup AND delivery orders when customer supplies an email.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "/api/uploads (bad ext rejection)",
+        "issue": "test_upload_bad_ext_rejected intermittently returns 502 (kubernetes proxy transient) instead of 400. Non-deterministic, seen in one full-suite run. Not an iter6-introduced regression."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_chaioz_phase1_iter6.py",
+    "/app/backend/tests/test_chaioz_api.py",
+    "/app/test_reports/pytest/iter6_results.xml",
+    "/app/test_reports/pytest/iter6_full_results.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Fix routers/orders.py create_order() — when pickup_time is a non-ISO literal ('ASAP'), guard datetime.fromisoformat() or reuse square_pos._ensure_rfc3339 / skip the email-formatting parse. Suggested fix: `try: pickup_local = datetime.fromisoformat(...).strftime('%I:%M %p') except ValueError: pickup_local = 'ASAP'` (or convert ASAP to now+15min earlier in the handler so all downstream code gets a real ISO).",
+    "(Optional) Add retry/robustness to /api/uploads to avoid transient 502s through the kubernetes proxy."
+  ],
+  "critical_code_review_comments": [
+    "routers/orders.py line 92 (BUG): `datetime.fromisoformat(payload.pickup_time.replace('Z','+00:00'))` is called on the raw pickup_time which may be 'ASAP' literal — iter6 only fixed this inside square_pos.py. The order has already been INSERTED into the db before this line, so on 500 you leave an orphan DB row + no square_order_id + the client sees 500 and will likely retry, producing duplicate orders. High-severity data consistency risk.",
+    "routers/orders.py reorder uses original['customer_name'], original['customer_phone'] with dict-access (not .get) — legacy orders missing these fields will KeyError → bubble up as 500 despite the try/except around Order() (the KeyError happens when building the kwargs BEFORE Order() is called). Move the dict access inside the try.",
+    "routers/menu.py get_combos resolves `items_detail` by filtering resolved list non-empty — but partial combos (1 of 2 items found) STILL surface with reduced items_detail, original_price, and save_aud. Consider requiring ALL referenced items resolve (len(resolved) == len(c['items'])) or mark as partial.",
+    "routers/admin.py /admin/combos uses admin cookie for auth via get_current_admin but does NOT verify Bearer — should work since get_current_admin likely uses get_current_user which is Bearer-aware, verified in tests. Fine.",
+    "routers/auth.py /auth/me returning literal None with 200 means clients must JSON-parse null; fine for axios/fetch but document it — iter6 frontend AuthContext was updated to handle this.",
+    "Square sync runs in BackgroundTasks AFTER db.orders.insert_one. If Square fails/timeouts, the order persists without square_order_id and customer sees 'confirmed' state. Consider surfacing square_sync_error in /api/orders/{id} responses (currently stored but test suite reads it — confirm frontend too)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_chaioz_phase1_iter6.py",
+    "/app/backend/tests/test_chaioz_api.py",
+    "/app/test_reports/pytest/iter6_results.xml",
+    "/app/test_reports/pytest/iter6_full_results.xml",
+    "/app/test_reports/iteration_4.json"
+  ],
+  "success_rate": {
+    "backend": "88% (15/17 new iter6 pass, 68/71 full suite pass) — only 2 failures both from the ASAP bug in orders.py + 1 flaky proxy 502 on uploads",
+    "frontend": "100% — landing renders with 0× /auth/me 401, admin pie/bar/line charts + me-pie-hint testid all present"
+  },
+  "test_credentials": "Admin: admin@chaioz.com.au / Chaioz@2026. Fresh users registered dynamically: TEST_iter6_<purpose>_<uuid>@example.com / Testpass@2026.",
+  "seed_data_creation": "Test registered ~6 TEST_iter6_* users and placed ~10 orders on their accounts (pickup/delivery/reorder/usual-normalisation suffix variants). One short-lived admin-created menu item + 2 short-lived admin combos (all cleaned up in finally blocks). No menu mutations persisted.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Test file to re-run after fix: `pytest /app/backend/tests/test_chaioz_phase1_iter6.py::TestSquarePOSSync -v`. Root cause of ASAP bug is in /app/backend/routers/orders.py at line 92 (pickup_local formatter), NOT in square_pos.py. Confirmed via `grep 'ValueError: Invalid isoformat' /var/log/supervisor/backend.err.log`. Square sandbox is LIVE and works correctly when pickup_time is valid ISO. Bearer auth works via get_optional_user/get_current_user which check cookie first then `Authorization: Bearer`. /auth/me returning 200+null is intentional and verified. Admin combos endpoints: GET/POST/PUT/DELETE /api/admin/combos. Public combos resilience: if ALL referenced items missing → combo skipped; partial is not tested here — see critical_code_review_comments #3.",
+  "rca_of_the_issue": "Bug: POST /api/orders with pickup_time='ASAP' returns 500 despite iter6 claim of fix. Reproduction: `curl -X POST $API/orders -H 'Content-Type: application/json' -d '{\"items\":[{\"item_id\":\"<x>\",\"name\":\"Karak Classic\",\"price\":4.95,\"qty\":1,\"line_total\":4.95}],\"pickup_time\":\"ASAP\",\"customer_name\":\"T\",\"customer_phone\":\"+61400000001\",\"customer_email\":\"t@ex.com\",\"payment_method\":\"square_mock\",\"fulfillment\":\"pickup\"}'` → 500. Backend log shows: `ValueError: Invalid isoformat string: 'ASAP'` at /app/backend/routers/orders.py line 92. Why: iter6 added _ensure_rfc3339 in services/square_pos.py to sanitise pickup_time before Square API but the email-confirmation branch in orders.py still uses the raw payload.pickup_time directly with datetime.fromisoformat. Mitigation: in orders.py, either (a) coerce 'ASAP' literal to datetime.now(timezone.utc).isoformat() at the top of create_order and use the coerced value everywhere, or (b) wrap the pickup_local format in try/except and fall back to 'ASAP'. Option (a) is cleaner because Square sync, email, and DB all get a consistent timestamp."
+}

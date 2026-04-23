@@ -88,6 +88,50 @@ async def seed_products():
         logger.info("Seeded %d retail products", len(docs))
 
 
+async def seed_combos():
+    """Seed default smart combos — skip if admin has already customised them."""
+    count = await db.combos.count_documents({})
+    if count > 0:
+        return
+    defaults = [
+        {
+            "id": "brekie-combo",
+            "name": "Brekie Combo",
+            "tagline": "Wrap + hashbrown + chai",
+            "items": ["Bun Maska", "Karak Classic"],
+            "bundle_price": 8.50,
+            "badge": "Most popular",
+            "icon": "sunrise",
+            "is_active": True,
+            "sort_order": 1,
+        },
+        {
+            "id": "late-night-combo",
+            "name": "Late Night Ritual",
+            "tagline": "Masala chai + pistachio milkcake",
+            "items": ["Masala Chai", "Pistachio Milkcake"],
+            "bundle_price": 12.90,
+            "badge": "Best value",
+            "icon": "moon",
+            "is_active": True,
+            "sort_order": 2,
+        },
+        {
+            "id": "chaat-combo",
+            "name": "Chai + Chaat",
+            "tagline": "Karak chai + samosa chaat",
+            "items": ["Karak Classic", "Samosa Chaat"],
+            "bundle_price": 14.50,
+            "badge": "Crowd favourite",
+            "icon": "sparkles",
+            "is_active": True,
+            "sort_order": 3,
+        },
+    ]
+    await db.combos.insert_many(defaults)
+    logger.info("Seeded %d combos", len(defaults))
+
+
 async def create_indexes():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
@@ -95,6 +139,7 @@ async def create_indexes():
     await db.products.create_index("id", unique=True)
     await db.orders.create_index("id", unique=True)
     await db.orders.create_index("user_id")
+    await db.combos.create_index("id", unique=True)
 
 
 @asynccontextmanager
@@ -103,6 +148,7 @@ async def lifespan(_: FastAPI):
     await seed_admin()
     await seed_menu()
     await seed_products()
+    await seed_combos()
     init_storage()
     # Start cart recovery background loop
     import asyncio as _asyncio

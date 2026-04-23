@@ -123,27 +123,40 @@ export default function Admin() {
 
           <div className="border border-chaioz-line bg-white rounded-2xl p-6" data-testid="morning-vs-evening">
             <h3 className="font-serif text-2xl text-chaioz-teal mb-4">Morning vs Evening</h3>
-            <div className="h-44">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: "Morning (5am–2pm)", value: stats.morning_revenue || 0 },
-                      { name: "Evening (2pm–late)", value: stats.evening_revenue || 0 },
-                    ]}
-                    dataKey="value"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    paddingAngle={2}
-                  >
-                    <Cell fill="#E8A84A" />
-                    <Cell fill="#0F4C4A" />
-                  </Pie>
-                  <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} contentStyle={{ background: "#FFFFFF", border: "1px solid #E0DACE", borderRadius: 8 }} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="h-44 relative">
+              {(stats.morning_revenue || 0) === 0 && (stats.evening_revenue || 0) === 0 ? (
+                <div data-testid="me-pie-empty" className="h-full flex flex-col items-center justify-center text-chaioz-teal/50 text-sm">
+                  <span>No orders yet in the last 30 days</span>
+                </div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "Morning (5am–2pm)", value: stats.morning_revenue || 0 },
+                          { name: "Evening (2pm–late)", value: stats.evening_revenue || 0 },
+                        ]}
+                        dataKey="value"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={2}
+                      >
+                        <Cell fill="#E8A84A" />
+                        <Cell fill="#0F4C4A" />
+                      </Pie>
+                      <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} contentStyle={{ background: "#FFFFFF", border: "1px solid #E0DACE", borderRadius: 8 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {((stats.morning_revenue || 0) === 0 || (stats.evening_revenue || 0) === 0) && (
+                    <div data-testid="me-pie-hint" className="absolute inset-x-0 bottom-0 text-center text-[10px] text-chaioz-teal/50 italic">
+                      {(stats.morning_revenue || 0) === 0 ? "No morning orders yet this fortnight" : "No evening orders yet this fortnight"}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs mt-3">
               <div className="flex items-center gap-1.5"><Sun className="w-3.5 h-3.5 text-chaioz-saffron"/> <span className="font-medium">{fmtAUD(stats.morning_revenue || 0)}</span> · {stats.morning_orders} ord</div>
