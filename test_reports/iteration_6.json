@@ -1,0 +1,44 @@
+{
+  "summary": "Chaioz Phase 1 — Iteration 8 testing complete. Added 10 new backend tests in /app/backend/tests/test_chaioz_phase1_iter8.py covering (a) Square webhook /health shape, (b) webhook state mapping for order.updated PREPARED→ready and COMPLETED→completed, (c) SMS side-effect on staff-PREPARED transition (verified via mocked notifications dev log), (d) unknown square_order_id → {ok:true,matched:false}, (e) payment.updated persisting square_payment_status, (f) HMAC-SHA256 signature verification: valid-sig → 200, invalid-sig → 401, missing-sig → 401 (env-swap + supervisor restart + env-restore), and (g) admin combo CRUD retest including inactive-hidden-from-public + full create/update/delete with save>0 calc. Result: 10/10 pass in 10.90s. Frontend Playwright e2e on /admin → Combos tab: 3 seeded combos render with Original/Bundle/Save labels, New combo dialog (data-testid='combo-editor-dialog') opens and creates 'PW Test Combo' (bundle 7.00, items Karak Classic + Bun Maska, live save $3.90), dialog closes, card renders, edit (tagline → 'e2e test UPDATED') persists, delete with native confirm auto-accepted and 'Combo deleted' toast confirmed — full CRUD UI green. Zero regressions.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/admin/combos/{id}", "issue": "Returns {ok:true} not the updated combo doc — minor inconsistency with POST/GET shape; acceptable but worth unifying."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin /admin Combos tab", "issues": ["Delete uses native window.confirm instead of shadcn AlertDialog — works, but inconsistent with rest of the app's design language. Minor polish item, not a blocker."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_chaioz_phase1_iter8.py",
+    "/app/test_reports/pytest/iter8_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/webhooks.py signature verification correctly uses hmac.compare_digest (constant-time) and base64 payload = url+rawBody per Square spec — good.",
+    "routers/webhooks.py _derive_status prefers fulfillment state over order state — correct behaviour so staff PREPARED wins over OPEN.",
+    "routers/webhooks.py reads SIGNATURE_KEY at module-import time (line 28). Because tests restart the backend via supervisorctl to pick up the env change, this works — but future: consider reading os.environ lazily inside _verify_signature to avoid the restart requirement if keys are rotated.",
+    "routers/webhooks.py line 131: `local.get('status') != 'ready'` is a safe guard against duplicate SMS fires — good.",
+    "ComboEditor.jsx live save calc uses parseFloat(form.bundle_price) defensively; clean.",
+    "Admin.jsx Combos tab uses `window.confirm` for deletion — works but design-inconsistent with shadcn AlertDialog used elsewhere."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_chaioz_phase1_iter8.py",
+    "/app/test_reports/pytest/iter8_results.xml",
+    "/app/test_reports/iteration_6.json"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 iter8 pass; no regressions observed)",
+    "frontend": "100% (admin combo CRUD full flow pass)"
+  },
+  "test_credentials": "Admin: admin@chaioz.com.au / Chaioz@2026. Webhook signature test uses temporary SQUARE_WEBHOOK_SIGNATURE_KEY='pytest-sig-key' (restored to empty in teardown).",
+  "seed_data_creation": "Created ~3 pickup orders (TEST_iter8_webhook_*) that went through Square sandbox to get square_order_id, then used as webhook targets. All left in DB (no destructive cleanup — admin tab renders 4th 'test order' artefacts harmlessly). Short-lived combos TEST_iter8_inactive_* and TEST_iter8_crud_* were created+deleted in finally blocks. Frontend PW run created & deleted 'PW Test Combo' cleanly.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter8 adds 10 tests in test_chaioz_phase1_iter8.py (takes ~11s). Signed-webhook tests mutate /app/backend/.env via a class-scope fixture that restarts supervisor backend (twice per run: set-key, restore-empty). If this run is part of a bigger CI, these tests should run isolated from concurrent traffic as they bounce the backend. Full regression: pytest /app/backend/tests/ — expect 85/85 with iter8 on top of the iter7 75/75 baseline. Mocked APIs still: Resend email, Twilio SMS, Uber Direct. Square sandbox LIVE.",
+  "rca_of_the_issue": "No new bugs. The only minor finding: PUT /api/admin/combos/{id} returns {ok:true} rather than the updated combo document. Not a regression and frontend tolerates it (fetches full list after save). Fix is optional: return the mutated doc for API consistency with POST which returns the full combo."
+}

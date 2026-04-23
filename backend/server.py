@@ -185,6 +185,7 @@ from routers.admin import router as admin_router  # noqa: E402
 from routers.uploads import router as uploads_router  # noqa: E402
 from routers.cart_recovery import router as cart_router  # noqa: E402
 from routers.delivery import router as delivery_router  # noqa: E402
+from routers.webhooks import router as webhooks_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(menu_router)
@@ -194,3 +195,4 @@ app.include_router(admin_router)
 app.include_router(uploads_router)
 app.include_router(cart_router)
 app.include_router(delivery_router)
+app.include_router(webhooks_router)

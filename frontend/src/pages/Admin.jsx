@@ -27,9 +27,10 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Search, Truck, Sun, Moon } from "lucide-react";
+import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Search, Truck, Sun, Moon, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import MenuItemEditor from "@/components/admin/MenuItemEditor";
+import ComboEditor from "@/components/admin/ComboEditor";
 
 const STATUS = ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"];
 
@@ -41,6 +42,9 @@ export default function Admin() {
   const [products, setProducts] = useState([]);
   const [editing, setEditing] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [combos, setCombos] = useState([]);
+  const [comboEditing, setComboEditing] = useState(null);
+  const [comboEditorOpen, setComboEditorOpen] = useState(false);
   const [q, setQ] = useState("");
 
   const reload = () => {
@@ -49,6 +53,7 @@ export default function Admin() {
       api.get("/admin/orders").then((r) => setOrders(r.data)),
       api.get("/admin/menu").then((r) => setItems(r.data)),
       api.get("/admin/products").then((r) => setProducts(r.data)),
+      api.get("/admin/combos").then((r) => setCombos(r.data)),
     ]).catch(() => {});
   };
 
@@ -75,6 +80,15 @@ export default function Admin() {
 
   const openNew = () => { setEditing(null); setEditorOpen(true); };
   const openEdit = (it) => { setEditing(it); setEditorOpen(true); };
+
+  const openNewCombo = () => { setComboEditing(null); setComboEditorOpen(true); };
+  const openEditCombo = (c) => { setComboEditing(c); setComboEditorOpen(true); };
+  const deleteCombo = async (c) => {
+    if (!window.confirm(`Delete combo "${c.name}"?`)) return;
+    await api.delete(`/admin/combos/${c.id}`);
+    toast.success("Combo deleted");
+    reload();
+  };
 
   const filteredItems = items.filter(
     (it) =>
@@ -187,6 +201,7 @@ export default function Admin() {
         <TabsList className="bg-white border border-chaioz-line">
           <TabsTrigger value="orders" data-testid="admin-tab-orders" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Orders</TabsTrigger>
           <TabsTrigger value="menu" data-testid="admin-tab-menu" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Menu</TabsTrigger>
+          <TabsTrigger value="combos" data-testid="admin-tab-combos" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Combos</TabsTrigger>
           <TabsTrigger value="products" data-testid="admin-tab-products" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Products</TabsTrigger>
         </TabsList>
 
@@ -279,6 +294,79 @@ export default function Admin() {
           </div>
         </TabsContent>
 
+        <TabsContent value="combos" className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-serif text-2xl text-chaioz-teal">Smart combos</h3>
+              <p className="text-xs text-chaioz-teal/60 mt-1">Bundle menu items with a discount. Shown on the home page.</p>
+            </div>
+            <Button onClick={openNewCombo} data-testid="admin-combo-new" className="rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal">
+              <Plus className="w-4 h-4 mr-1" /> New combo
+            </Button>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            {combos.map((c) => {
+              const original = c.items.reduce((s, n) => {
+                const it = items.find((m) => m.name === n);
+                return s + (it?.price || 0);
+              }, 0);
+              const save = Math.max(0, +(original - (c.bundle_price || 0)).toFixed(2));
+              return (
+                <div key={c.id} data-testid={`admin-combo-${c.id}`} className="border border-chaioz-line bg-white rounded-2xl p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-chaioz-saffron" />
+                        <h4 className="font-medium text-chaioz-teal text-lg">{c.name}</h4>
+                        {!c.is_active && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 uppercase tracking-wider">Hidden</span>}
+                        {c.badge && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-chaioz-saffron/20 text-chaioz-saffron uppercase tracking-wider">{c.badge}</span>}
+                      </div>
+                      <p className="text-xs text-chaioz-teal/60 mt-1">{c.tagline}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => openEditCombo(c)} data-testid={`combo-edit-${c.id}`} className="h-7 w-7 text-chaioz-teal/70 hover:text-chaioz-saffron">
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => deleteCombo(c)} data-testid={`combo-delete-${c.id}`} className="h-7 w-7 text-chaioz-teal/70 hover:text-red-400">
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {c.items.map((n) => {
+                      const found = items.find((m) => m.name === n);
+                      return (
+                        <span key={n} className={`text-[11px] px-2 py-0.5 rounded-full border ${found ? "bg-chaioz-cream border-chaioz-line text-chaioz-teal" : "bg-red-50 border-red-200 text-red-500"}`}>
+                          {n}{!found && " (missing)"}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-chaioz-line/70">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-chaioz-teal/60">Original</p>
+                      <p className="text-sm text-chaioz-teal/80 line-through">{fmtAUD(original)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-chaioz-teal/60">Bundle</p>
+                      <p className="text-sm text-chaioz-teal font-medium">{fmtAUD(c.bundle_price)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-chaioz-saffron">Save</p>
+                      <p className="text-sm text-chaioz-saffron font-medium">{fmtAUD(save)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {combos.length === 0 && (
+              <div className="col-span-2 p-10 text-center text-chaioz-teal/60 border border-dashed border-chaioz-line rounded-2xl" data-testid="combos-empty">
+                No combos yet. Create your first to drive upsells.
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="products" className="mt-6">
           <ul className="divide-y divide-chaioz-line border border-chaioz-line rounded-2xl bg-white">
             {products.map((p) => (
@@ -298,6 +386,14 @@ export default function Admin() {
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
         item={editing}
+        onSaved={reload}
+      />
+
+      <ComboEditor
+        open={comboEditorOpen}
+        onClose={() => setComboEditorOpen(false)}
+        combo={comboEditing}
+        menuItems={items}
         onSaved={reload}
       />
     </div>
