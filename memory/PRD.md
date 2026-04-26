@@ -79,6 +79,28 @@ Flipped from dark-mode-primary to warm cream primary theme matching chaioz.com.a
 3. Hit **Save**. No code change needed — `/api/loyalty/program` and `/api/loyalty/me` automatically pick it up.
 4. (Optional) Switch `SQUARE_ENVIRONMENT` to `production` in `backend/.env` and re-do steps 1-3 in the production dashboard before launch.
 
+### 2026-04-26 — Iteration 11 (mobile deepening — push, deep-links, EAS)
+- **Push notifications via Expo Push Service** (free, no SDK):
+  - New `services/push.py` (HTTPS POST to https://exp.host/--/api/v2/push/send) + `routers/devices.py` (`/api/devices/{register,unregister}`).
+  - 5 trigger sources wired across the codebase: order_confirmed (orders.create_order), order_ready (admin status update + Square `PREPARED` webhook), abandoned_cart (cart_recovery loop), loyalty_milestone (loyalty.sync_account_for_order — fires only on first crossing of 100 / 200 pts), marketing_broadcast (admin-triggered).
+  - Anonymous device tokens are stored in a separate `device_tokens` collection so abandoned-cart pings still reach logged-out devices; on login the token is promoted onto the user via `$addToSet` (de-duping idempotently).
+- **Deep-linking** (URI scheme `chaioz://` + universal links `https://chaioz.com.au/{order/:id, menu, account, loyalty}`):
+  - `mobile/src/lib/linking.js` — React Navigation linking config.
+  - `mobile/src/lib/notifications.js` — push tap routes through `pathForPush()` to the right screen.
+  - AASA + Android `assetlinks.json` generated at `frontend/public/.well-known/*` for static hosting at chaioz.com.au, and mirrored at `GET /api/well-known/{apple-app-site-association,assetlinks.json}` on the backend (proxy-friendly).
+- **Marketing broadcast UI** — new "Broadcast" tab on `/admin` with title (≤80) + body (≤200) inputs + character counters. Hits `POST /api/admin/broadcast/push` which fan-outs to every registered device.
+- **EAS build profiles** — `mobile/eas.json` with development / preview / production targets. README rewritten with full TestFlight + Play Store flow.
+- **Apple/Google Pay deferred** — kept Square sandbox `square_mock` for mobile day-1 to avoid native module requirements.
+- **Test coverage**: 116/116 pytest pass (105 regression + 11 new iter11 tests).
+
+## How to enable push notifications + deep links (manual steps)
+1. **Create the Expo project** (one-time): `cd /app/mobile && yarn global add eas-cli && eas login && eas init` — this fills `app.json → extra.eas.projectId` automatically.
+2. **First EAS build** of either platform: `eas build --profile preview --platform ios|android` — for iOS this also registers the Apple Team ID with EAS; copy that ID into `backend/.env → APPLE_TEAM_ID=...` and into `frontend/public/.well-known/apple-app-site-association` (replace `TEAMIDXXXX`). For Android, copy the SHA-256 fingerprint EAS prints into `frontend/public/.well-known/assetlinks.json`.
+3. **Host `.well-known/*` on chaioz.com.au** — Apple/Google fetch these from the production domain only. Either:
+   - Deploy `frontend/public/.well-known/*` as part of the website's static build, or
+   - Proxy `chaioz.com.au/.well-known/*` to `https://api.chaioz.com.au/api/well-known/*`.
+4. **Push: no extra keys required** for Expo's default service. If you ever switch to FCM or APNs directly you'll need a `google-services.json` (Android) and Apple Push key (iOS).
+
 ### 2026-04-23 — Iteration 8 (webhooks + admin combo UI)
 - **Square webhook handler**: `POST /api/webhooks/square` receives `order.updated` / `payment.updated` events from Square POS, verifies HMAC-SHA256 signature (`SQUARE_WEBHOOK_SIGNATURE_KEY`), maps fulfillment state (PROPOSED→confirmed, RESERVED→preparing, PREPARED→ready, COMPLETED→completed, CANCELED→cancelled) back onto our local order doc, and auto-fires the "order is ready" SMS when staff taps PREPARED on the Square tablet. Health check at `GET /api/webhooks/square/health`. NOTE: `SQUARE_WEBHOOK_SIGNATURE_KEY` is intentionally empty until the user creates the subscription in Square Developer Dashboard → paste the generated key into `backend/.env` → `sudo supervisorctl restart backend` to enable signature verification.
 - **Admin Combo CRUD UI**: new "Combos" tab on `/admin` page. `ComboEditor` dialog with multi-select item search + live "save $X" calculation. Create / edit / delete wired to existing `/api/admin/combos` endpoints.
