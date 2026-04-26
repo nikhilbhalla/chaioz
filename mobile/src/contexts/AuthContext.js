@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import * as Notifications from 'expo-notifications';
 import { api, setToken } from '../lib/api';
+import { unregisterPushToken } from '../lib/notifications';
 
 const AuthCtx = createContext(null);
 
@@ -24,6 +26,11 @@ export function AuthProvider({ children }) {
     const { data } = await api.post('/auth/token', { email, password });
     await setToken(data.access_token);
     setUser(data.user);
+    // Re-attach the device's existing push token to this newly-logged-in user.
+    try {
+      const t = await Notifications.getExpoPushTokenAsync();
+      if (t?.data) await api.post('/devices/register', { token: t.data });
+    } catch {}
     return data.user;
   };
 
@@ -36,6 +43,11 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    // Detach this device from receiving more pushes for the previous user.
+    try {
+      const t = await Notifications.getExpoPushTokenAsync();
+      if (t?.data) await unregisterPushToken(t.data);
+    } catch {}
     try { await api.post('/auth/logout'); } catch {}
     await setToken(null);
     setUser(null);

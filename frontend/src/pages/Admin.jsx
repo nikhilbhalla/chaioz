@@ -215,6 +215,7 @@ export default function Admin() {
           <TabsTrigger value="menu" data-testid="admin-tab-menu" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Menu</TabsTrigger>
           <TabsTrigger value="combos" data-testid="admin-tab-combos" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Combos</TabsTrigger>
           <TabsTrigger value="products" data-testid="admin-tab-products" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Products</TabsTrigger>
+          <TabsTrigger value="broadcast" data-testid="admin-tab-broadcast" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Broadcast</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="mt-6">
@@ -434,6 +435,10 @@ export default function Admin() {
             ))}
           </div>
         </TabsContent>
+
+        <TabsContent value="broadcast" className="mt-6">
+          <BroadcastTab />
+        </TabsContent>
       </Tabs>
 
       <MenuItemEditor
@@ -457,6 +462,79 @@ export default function Admin() {
         product={productEditing}
         onSaved={reload}
       />
+    </div>
+  );
+}
+
+function BroadcastTab() {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [lastResult, setLastResult] = useState(null);
+
+  const titleLeft = 80 - title.length;
+  const bodyLeft = 200 - body.length;
+  const ok = title.trim().length > 0 && body.trim().length > 0 && titleLeft >= 0 && bodyLeft >= 0;
+
+  const send = async () => {
+    if (!ok) return;
+    if (!window.confirm(`Send "${title}" to every Chaioz app user?`)) return;
+    setBusy(true);
+    setLastResult(null);
+    try {
+      const { data } = await api.post("/admin/broadcast/push", { title, body });
+      setLastResult(data);
+      toast.success(`Broadcast sent to ${data.sent} devices`);
+      setTitle("");
+      setBody("");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Broadcast failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl border border-chaioz-line bg-white rounded-2xl p-6" data-testid="admin-broadcast">
+      <h3 className="font-serif text-2xl text-chaioz-teal">Push notification broadcast</h3>
+      <p className="text-xs text-chaioz-teal/60 mt-1">Goes to every device that has the app installed and granted push permission. Use sparingly — Apple/Google flag spammy senders.</p>
+
+      <div className="mt-5">
+        <label className="text-xs text-chaioz-teal/70">Title <span className={titleLeft < 0 ? "text-red-500" : "text-chaioz-teal/40"}>({titleLeft})</span></label>
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Brekie combo 25% off this Saturday"
+          maxLength={120}
+          data-testid="broadcast-title"
+          className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal"
+        />
+      </div>
+      <div className="mt-4">
+        <label className="text-xs text-chaioz-teal/70">Body <span className={bodyLeft < 0 ? "text-red-500" : "text-chaioz-teal/40"}>({bodyLeft})</span></label>
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Tap to grab a Karak + Bun Maska before 10am — Saturday only."
+          rows={3}
+          maxLength={300}
+          data-testid="broadcast-body"
+          className="mt-1 w-full rounded-xl bg-chaioz-cream border border-chaioz-line text-chaioz-teal p-3 text-sm focus:outline-none focus:ring-2 focus:ring-chaioz-saffron"
+        />
+      </div>
+      <Button
+        onClick={send}
+        disabled={!ok || busy}
+        data-testid="broadcast-send"
+        className="mt-5 rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal disabled:opacity-50"
+      >
+        {busy ? "Sending..." : "Send broadcast"}
+      </Button>
+      {lastResult && (
+        <p className="mt-3 text-xs text-chaioz-teal/70" data-testid="broadcast-result">
+          Last result: sent to <strong>{lastResult.sent}</strong> devices{lastResult.errors ? ` · ${lastResult.errors} errors` : ""}.
+        </p>
+      )}
     </div>
   );
 }

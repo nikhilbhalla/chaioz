@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 11 (Chaioz mobile deepening – Phase 2) backend validation. Ran the new push/device/well-known/broadcast suite plus full regression against the public preview URL. All 11 new tests in test_chaioz_phase1_iter11.py PASS, and the full backend suite is 116/116 PASS in ~49s (no regressions on iter1..iter10). Universal-link AASA + assetlinks endpoints serve correct payloads; /api/devices/register correctly rejects non-Expo tokens, supports anonymous registration, and promotes anon→user (anon record cleared) on authenticated re-register; /api/devices/unregister enforces auth and pulls the token off user.expo_push_tokens; /api/admin/broadcast/push enforces admin auth, validates title/body presence and length (<=80/<=200), and returns sent:int (0 in sandbox – expected, no live tokens). Order creation and webhook PREPARED still succeed with push side-effects firing through the no-token-graceful path.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/broadcast/push", "issue": "Handler accepts `payload: dict` instead of a Pydantic model, so request typing/validation is manual. Functional, but a BroadcastPushRequest model would tighten contract & OpenAPI docs."},
+      {"endpoint": "POST /api/devices/unregister", "issue": "Re-uses RegisterTokenRequest – the platform/device_name fields are irrelevant for unregister. Cosmetic only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_chaioz_phase1_iter11.py",
+    "/app/test_reports/pytest/iter11_results.xml",
+    "/app/test_reports/pytest/full_regression_iter11.xml"
+  ],
+  "action_items": [
+    "Optional cleanup: convert /api/admin/broadcast/push payload to a Pydantic BroadcastPushRequest model (title:str max_length=80, body:str max_length=200, campaign:Optional[str]) so 422 responses come from FastAPI itself.",
+    "Optional cleanup: add a dedicated UnregisterTokenRequest pydantic schema for /api/devices/unregister to drop the unused platform/device_name fields."
+  ],
+  "critical_code_review_comments": [
+    "services/push.py — push send pipeline correctly chunks at 100/req, supports optional EXPO_ACCESS_TOKEN, swallows network errors via try/except so no caller (orders/webhooks/loyalty/cart_recovery) can be brought down by Expo outages. Good.",
+    "routers/devices.py — uses get_optional_user for /register so anon flow works without 401. Promotion path uses $addToSet (idempotent) and deletes anon document — exactly what the test asserts. Good.",
+    "routers/admin.broadcast_push — proper admin gate via get_current_admin, manual length validation matches spec (title<=80, body<=200). Returns whatever push.broadcast returns, so callers get sent:int + optional errors/reason — fine.",
+    "server.py — /api/well-known/* endpoints serve static JSON for AASA + assetlinks; mirrored to frontend/public/.well-known for chaioz.com.au static hosting. Good.",
+    "Regression integrity: iter1..iter10 (105 tests) all green — no side-effect leakage from the new push fire-and-forget calls in orders.create_order / webhooks.PREPARED / cart_recovery / loyalty milestones."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "skipped"},
+  "test_credentials": "Admin admin@chaioz.com.au / Chaioz@2026 (read from /app/memory/test_credentials.md). Customer fixtures auto-created per test (random email, password GoodPass1, phone 0412345678).",
+  "seed_data_creation": "No new seed data. Tests register transient users + Expo-shaped tokens (ExponentPushToken[...]) which are inert against the real Expo endpoint (no real device).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend public URL: https://late-night-chai-1.preview.emergentagent.com. Frontend testing was explicitly out of scope this iteration – main agent will manually verify the new Admin Broadcast tab. iter11 added: services/push.py (Expo HTTPS wrapper), routers/devices.py (register/unregister), POST /api/admin/broadcast/push, and GET /api/well-known/{apple-app-site-association,assetlinks.json}. push_send_to_user is wired into orders.create_order, admin.update_order_status, webhooks.PREPARED, cart_recovery loop, and loyalty milestone (100/200 pts). All graceful when no tokens are present (sent=0). Square sandbox still has no Loyalty program → /api/loyalty/program returning configured:false + needs_setup:true is expected behaviour, not a bug.",
+  "rca_of_the_issue": "N/A — no failures observed. Full suite 116/116 PASS in 48.77s; iter11 alone 11/11 PASS in 3.90s."
+}

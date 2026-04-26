@@ -14,6 +14,7 @@ from services.notifications import (
     cart_recovery_email_html,
     cart_recovery_sms,
 )
+from services.push import send_to_user as push_send_to_user, send_to_anon_token as push_send_anon
 
 logger = logging.getLogger("chaioz.cart_recovery")
 router = APIRouter(prefix="/api/cart", tags=["cart_recovery"])
@@ -107,6 +108,20 @@ async def run_recovery_scan() -> int:
             await send_email(cart["email"], "Your chai's getting cold 🫖", html)
         if cart.get("phone"):
             await send_sms(cart["phone"], cart_recovery_sms(cart.get("name") or "", resume_url))
+
+        # Push fallback — try the linked user, else any anonymous device tokens
+        # we matched against this cart's email/phone.
+        push_title = "Your chai is getting cold 🫖"
+        push_body = "Tap to finish your order — your cart is saved."
+        push_data = {"type": "abandoned_cart", "resume_url": resume_url}
+        if cart.get("email"):
+            user = await db.users.find_one({"email": cart["email"]}, {"_id": 0, "id": 1})
+            if user:
+                await push_send_to_user(user["id"], push_title, push_body, push_data)
+        anon_tokens = cart.get("device_tokens") or []
+        for t in anon_tokens:
+            await push_send_anon(t, push_title, push_body, push_data)
+
         await db.abandoned_carts.update_one(
             {"key": cart["key"]},
             {"$set": {"recovery_sent": True, "recovery_sent_at": datetime.now(timezone.utc).isoformat()}},

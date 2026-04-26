@@ -40,7 +40,7 @@ def user_session():
     s = requests.Session()
     uniq = uuid.uuid4().hex[:8]
     email = f"TEST_iter2_{uniq}@example.com"
-    r = s.post(f"{API}/auth/register", json={"name": "Test2", "email": email, "password": "Pass1234!"}, timeout=30)
+    r = s.post(f"{API}/auth/register", json={"name": "Test User", "email": email, "password": "Pass1234!"}, timeout=30)
     assert r.status_code == 200
     return s
 

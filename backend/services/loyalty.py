@@ -285,6 +285,8 @@ async def sync_account_for_order(user_doc: dict, order_doc: dict) -> Optional[di
       1. Get-or-create the customer's Square loyalty account using their phone.
       2. Accumulate points against the Square order.
       3. Pull the latest balance and update the local cache (`user.loyalty_points`).
+      4. Fire a push when the user's new balance crosses a reward threshold
+         (100 = free chai, 200 = $5 off).
     """
     if not square_configured():
         return None
@@ -329,6 +331,24 @@ async def sync_account_for_order(user_doc: dict, order_doc: dict) -> Optional[di
             "square_loyalty_accrued": bool(accumulate.get("success")),
         }},
     )
+
+    # Milestone push — only fire when the user crosses the threshold from
+    # below (so we don't spam them on subsequent orders past 100/200).
+    if user_doc.get("id") and balance is not None:
+        prev_balance = int(user_doc.get("loyalty_points") or 0)
+        for threshold, copy in ((100, "free chai unlocked"), (200, "$5 off unlocked")):
+            if prev_balance < threshold <= int(balance):
+                try:
+                    from services.push import send_to_user as _push
+                    await _push(
+                        user_doc["id"],
+                        f"You hit {threshold} pts 🎉",
+                        f"{copy.capitalize()} — redeem on your next order.",
+                        {"type": "loyalty_milestone", "points": int(balance), "threshold": threshold},
+                    )
+                except Exception:
+                    pass
+
     return {
         "account_id": account_id,
         "balance": balance,

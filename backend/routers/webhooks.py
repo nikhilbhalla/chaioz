@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 
 from services.notifications import send_sms, format_au_phone, order_ready_sms
+from services.push import send_to_user as push_send_to_user
 
 logger = logging.getLogger("chaioz.webhooks.square")
 
@@ -128,13 +129,22 @@ async def receive_webhook(request: Request, bg: BackgroundTasks):
         )
 
         # Notify customer when staff marks ready on the Square tablet.
-        if new_status == "ready" and local.get("status") != "ready" and local.get("customer_phone"):
-            phone = format_au_phone(local["customer_phone"])
-            if phone:
+        if new_status == "ready" and local.get("status") != "ready":
+            if local.get("customer_phone"):
+                phone = format_au_phone(local["customer_phone"])
+                if phone:
+                    bg.add_task(
+                        send_sms,
+                        phone,
+                        order_ready_sms(local.get("short_code", ""), local.get("customer_name", "")),
+                    )
+            if local.get("user_id"):
                 bg.add_task(
-                    send_sms,
-                    phone,
-                    order_ready_sms(local.get("short_code", ""), local.get("customer_name", "")),
+                    push_send_to_user,
+                    local["user_id"],
+                    "Your chai is ready 🫖",
+                    f"Order #{local.get('short_code', '')} — come pick it up.",
+                    {"type": "order_ready", "order_id": local["id"], "short_code": local.get("short_code", "")},
                 )
 
         logger.info("Square webhook: order %s → %s", local.get("short_code"), new_status)

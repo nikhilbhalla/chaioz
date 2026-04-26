@@ -6,6 +6,7 @@ import uuid
 from auth_utils import get_current_admin
 from services.notifications import send_sms, format_au_phone, order_ready_sms
 from services.square_catalog import sync_menu_availability
+from services.push import send_to_user as push_send_to_user, broadcast as push_broadcast
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -132,7 +133,34 @@ async def update_order_status(
         phone = format_au_phone(order["customer_phone"])
         if phone:
             bg.add_task(send_sms, phone, order_ready_sms(order.get("short_code", ""), order.get("customer_name", "")))
+    if status == "ready" and order.get("user_id"):
+        bg.add_task(
+            push_send_to_user,
+            order["user_id"],
+            "Your chai is ready 🫖",
+            f"Order #{order.get('short_code', '')} — come pick it up.",
+            {"type": "order_ready", "order_id": order_id, "short_code": order.get("short_code", "")},
+        )
     return {"ok": True}
+
+
+# ---------- Marketing broadcast (push) ----------
+@router.post("/broadcast/push")
+async def broadcast_push(payload: dict, _: dict = Depends(get_current_admin)):
+    """Send a push notification to every registered device. Use sparingly —
+    Apple/Google flag spammy senders. Recommended cadence: <= 2/week."""
+    title = (payload.get("title") or "").strip()
+    body = (payload.get("body") or "").strip()
+    if not title or not body:
+        raise HTTPException(status_code=400, detail="title and body required")
+    if len(title) > 80 or len(body) > 200:
+        raise HTTPException(status_code=400, detail="title<=80, body<=200")
+    res = await push_broadcast(
+        title,
+        body,
+        {"type": "marketing", "campaign": payload.get("campaign", "manual")},
+    )
+    return res
 
 
 # ---------- Menu CRUD ----------

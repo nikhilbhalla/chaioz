@@ -41,7 +41,7 @@ def fresh_user():
     s.headers.update({"Content-Type": "application/json"})
     email = f"TEST_iter5_{uuid.uuid4().hex[:8]}@example.com"
     r = s.post(f"{API}/auth/register", json={
-        "name": "Iter5 Tester",
+        "name": "Iter Tester",
         "email": email,
         "password": "Testpass@2026",
     })
@@ -135,7 +135,7 @@ class TestUsualAndReorder:
             "items": [line],
             "delivery_fee": 0.0,
             "pickup_time": pickup_iso,
-            "customer_name": "Iter5 Tester",
+            "customer_name": "Iter Tester",
             "customer_phone": "+61400000000",
             "customer_email": fresh_user["email"],
             "payment_method": "square_mock",
@@ -225,7 +225,7 @@ class TestSquareSync:
             "items": [line],
             "delivery_fee": 0.0,
             "pickup_time": (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat(),
-            "customer_name": "Iter5 Square",
+            "customer_name": "Iter Square",
             "customer_phone": "+61400000000",
             "customer_email": fresh_user["email"],
             "payment_method": "square_mock",

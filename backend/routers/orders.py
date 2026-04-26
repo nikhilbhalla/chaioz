@@ -14,6 +14,7 @@ from services.notifications import (
 )
 from services.square_pos import sync_order_async, is_configured as square_configured, _ensure_rfc3339
 from services.loyalty import sync_account_for_order, square_configured as loyalty_configured
+from services.push import send_to_user as push_send_to_user
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -115,6 +116,20 @@ async def create_order(
         await db.abandoned_carts.update_one(
             {"key": payload.customer_email},
             {"$set": {"recovered_at": datetime.now(timezone.utc).isoformat()}},
+        )
+
+    # Push: order confirmation (only when we have a logged-in user with tokens)
+    if user:
+        try:
+            pickup_local = datetime.fromisoformat(pickup_time_iso.replace("Z", "+00:00")).strftime("%I:%M %p").lstrip("0")
+        except Exception:
+            pickup_local = "soon"
+        bg.add_task(
+            push_send_to_user,
+            user["id"],
+            f"Order #{order.short_code} confirmed",
+            f"We're brewing — pickup at {pickup_local}. Tap to track.",
+            {"type": "order_confirmed", "order_id": order.id, "short_code": order.short_code},
         )
 
     # Push to Square POS → staff KDS (non-blocking). The wrapper also fires

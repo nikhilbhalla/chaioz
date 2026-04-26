@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -19,6 +19,9 @@ import AccountScreen from './src/screens/AccountScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import { colors } from './src/theme';
+
+import { linking, pathForPush } from './src/lib/linking';
+import { usePushNotifications } from './src/lib/notifications';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -59,21 +62,42 @@ function Tabs() {
   );
 }
 
+function NavigationRoot() {
+  const navigationRef = useRef(null);
+
+  const onPushTap = useCallback((data) => {
+    const target = pathForPush(data);
+    if (!target || !navigationRef.current) return;
+    try {
+      // navigate(name, params) — also works for nested navigators via { screen, params }
+      navigationRef.current.navigate(target.name, target.params);
+    } catch (e) {
+      console.warn('[push] nav failed', e?.message);
+    }
+  }, []);
+
+  usePushNotifications(onPushTap);
+
+  return (
+    <NavigationContainer ref={navigationRef} linking={linking}>
+      <StatusBar style="dark" />
+      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }}>
+        <Stack.Screen name="Tabs" component={Tabs} />
+        <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ headerShown: true, title: 'Checkout' }} />
+        <Stack.Screen name="OrderConfirm" component={OrderConfirmScreen} options={{ headerShown: true, title: 'Order confirmed', headerBackVisible: false }} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true, title: 'Sign in' }} />
+        <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: true, title: 'Create account' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
         <CartProvider>
-          <NavigationContainer>
-            <StatusBar style="dark" />
-            <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }}>
-              <Stack.Screen name="Tabs" component={Tabs} />
-              <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ headerShown: true, title: 'Checkout' }} />
-              <Stack.Screen name="OrderConfirm" component={OrderConfirmScreen} options={{ headerShown: true, title: 'Order confirmed', headerBackVisible: false }} />
-              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true, title: 'Sign in' }} />
-              <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: true, title: 'Create account' }} />
-            </Stack.Navigator>
-          </NavigationContainer>
+          <NavigationRoot />
         </CartProvider>
       </AuthProvider>
     </SafeAreaProvider>

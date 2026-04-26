@@ -187,6 +187,7 @@ from routers.cart_recovery import router as cart_router  # noqa: E402
 from routers.delivery import router as delivery_router  # noqa: E402
 from routers.webhooks import router as webhooks_router  # noqa: E402
 from routers.loyalty import router as loyalty_router  # noqa: E402
+from routers.devices import router as devices_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(menu_router)
@@ -198,3 +199,41 @@ app.include_router(cart_router)
 app.include_router(delivery_router)
 app.include_router(webhooks_router)
 app.include_router(loyalty_router)
+app.include_router(devices_router)
+
+
+# ---------- Universal links: AASA (iOS) + assetlinks.json (Android) ----------
+# Apple/Google fetch these from the *production domain* (chaioz.com.au) before
+# any deep link resolves into the app. We host them from the API so the user
+# can either:
+#   (a) Point chaioz.com.au/.well-known/* at this backend via a CDN/proxy, or
+#   (b) Copy these JSON blobs to their own static host.
+APPLE_TEAM_ID = os.environ.get("APPLE_TEAM_ID", "TEAMIDXXXX")
+ANDROID_CERT_FINGERPRINTS = [
+    s for s in (os.environ.get("ANDROID_SHA256_FINGERPRINTS", "").split(",")) if s.strip()
+]
+
+
+@app.get("/api/well-known/apple-app-site-association")
+async def aasa():
+    return {
+        "applinks": {
+            "apps": [],
+            "details": [{
+                "appID": f"{APPLE_TEAM_ID}.com.chaioz.app",
+                "paths": ["/order/*", "/menu", "/menu/*", "/account", "/loyalty"],
+            }],
+        }
+    }
+
+
+@app.get("/api/well-known/assetlinks.json")
+async def assetlinks():
+    return [{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.chaioz.app",
+            "sha256_cert_fingerprints": ANDROID_CERT_FINGERPRINTS or ["FILL_AFTER_FIRST_EAS_BUILD"],
+        },
+    }]

@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMIDXXXX.com.chaioz.app",
+        "paths": ["/order/*", "/menu", "/menu/*", "/account", "/loyalty"]
+      }
+    ]
+  }
+}

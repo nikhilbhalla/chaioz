@@ -7,18 +7,63 @@
     "userInterfaceStyle": "light",
     "scheme": "chaioz",
     "assetBundlePatterns": ["**/*"],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF6EE"
+    },
     "ios": {
       "bundleIdentifier": "com.chaioz.app",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "associatedDomains": [
+        "applinks:chaioz.com.au",
+        "applinks:www.chaioz.com.au"
+      ],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "com.chaioz.app"
+      "package": "com.chaioz.app",
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "chaioz.com.au" },
+            { "scheme": "https", "host": "www.chaioz.com.au" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/icon.png"
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F1B73E",
+          "defaultChannel": "default"
+        }
+      ]
+    ],
+    "notification": {
+      "icon": "./assets/icon.png",
+      "color": "#F1B73E",
+      "iosDisplayInForeground": true,
+      "androidMode": "default"
+    },
     "extra": {
-      "apiBaseUrl": "https://late-night-chai-1.preview.emergentagent.com"
-    }
+      "apiBaseUrl": "https://late-night-chai-1.preview.emergentagent.com",
+      "eas": {
+        "projectId": "REPLACE_AFTER_FIRST_EAS_INIT"
+      }
+    },
+    "owner": "chaioz"
   }
 }
