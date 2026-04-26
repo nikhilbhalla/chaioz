@@ -86,7 +86,11 @@ async def create_order(
 
     points_earned = 0
     if user:
-        points_earned = int(subtotal * 10)
+        # 1 point per AU$1 spent (matches Square Loyalty accrual rule).
+        # Square's accumulate_points() will reconcile the official balance
+        # asynchronously after the order syncs — this local cache exists
+        # only so the receipt UI shows immediate feedback.
+        points_earned = int(subtotal)
         new_pts = user.get("loyalty_points", 0) + points_earned
         new_tier = _calc_loyalty_tier(new_pts)
         await db.users.update_one(
@@ -245,7 +249,8 @@ async def reorder(order_id: str, bg: BackgroundTasks, user: dict = Depends(get_c
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.orders.insert_one(doc)
 
-    points_earned = int(new_order.subtotal * 10)
+    # 1 point per AU$1 spent (matches Square Loyalty rule). See note above.
+    points_earned = int(new_order.subtotal)
     new_pts = user.get("loyalty_points", 0) + points_earned
     await db.users.update_one(
         {"id": user["id"]},

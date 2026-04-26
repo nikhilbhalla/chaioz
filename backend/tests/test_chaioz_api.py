@@ -210,7 +210,7 @@ class TestOrders:
         assert r.status_code == 200
         order = r.json()
         assert order["payment_status"] == "paid"
-        earned_expected = int(order["total"] * 10)
+        earned_expected = int(order["subtotal"])  # 1pt per AU$1 (Square Loyalty rule)
         assert order.get("points_earned") == earned_expected
         # /me points bumped
         me_after = user_session.get(f"{API}/auth/me", timeout=15).json()
