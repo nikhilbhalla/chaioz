@@ -9,7 +9,7 @@
     "assetBundlePatterns": ["**/*"],
     "icon": "./assets/icon.png",
     "splash": {
-      "image": "./assets/icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#FAF6EE"
     },
@@ -26,7 +26,10 @@
     },
     "android": {
       "package": "com.chaioz.app",
-      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F3840"
+      },
       "intentFilters": [
         {
           "action": "VIEW",
@@ -40,7 +43,8 @@
       ]
     },
     "web": {
-      "favicon": "./assets/icon.png"
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
@@ -63,7 +67,6 @@
       "eas": {
         "projectId": "REPLACE_AFTER_FIRST_EAS_INIT"
       }
-    },
-    "owner": "chaioz"
+    }
   }
 }

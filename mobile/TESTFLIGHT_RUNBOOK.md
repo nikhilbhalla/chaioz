@@ -2,7 +2,23 @@
 
 This is the exact sequence to go from "code in this repo" → "Chaioz on your iPhone via TestFlight" → "Beta testers on Play Store internal track".
 
-> **Estimated time:** 30 min hands-on + ~1 hour of EAS cloud build wait time. You only need to do steps 1–3 once.
+> **Estimated time:** 20 min hands-on + ~30 min of EAS cloud build wait time. You only need to do steps 1–3 once.
+
+## ✅ Pre-flight done by the agent (already committed)
+
+| Check | Status |
+|---|---|
+| `assets/icon.png`, `adaptive-icon.png`, `splash.png`, `favicon.png` | ✅ Generated (Chaioz teal + saffron) |
+| `react-native-gesture-handler` dependency | ✅ Added (was missing) |
+| `app.json` — bogus `google-services.json` reference | ✅ Removed (we use Expo Push Service, not raw FCM) |
+| `app.json` — iOS `associatedDomains`, Android `intentFilters` for `chaioz.com.au` | ✅ Configured |
+| `expo-notifications` plugin + permissions | ✅ Configured |
+| `eas.json` — development / preview / production profiles | ✅ Configured |
+| `expo-doctor` — 16/16 checks pass | ✅ Verified |
+| Native bundle compiles via `expo export --platform ios` | ✅ 7.36 MB bundle, no errors |
+| `well-known/apple-app-site-association` + `assetlinks.json` | ✅ Templated, ready for Team ID + SHA-256 paste |
+
+The codebase is **build-ready**. You only need to provide credentials.
 
 ---
 
