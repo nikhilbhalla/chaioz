@@ -79,6 +79,17 @@ Flipped from dark-mode-primary to warm cream primary theme matching chaioz.com.a
 3. Hit **Save**. No code change needed — `/api/loyalty/program` and `/api/loyalty/me` automatically pick it up.
 4. (Optional) Switch `SQUARE_ENVIRONMENT` to `production` in `backend/.env` and re-do steps 1-3 in the production dashboard before launch.
 
+### 2026-04-26 — Iteration 12 (Rewards page fix + opt-in + EAS runbook)
+- **🔧 Bug fix — Square Loyalty wasn't showing on the Rewards page (`/loyalty`)**. The page was hardcoded to membership tiers (Bronze/Silver/Gold) only. Rewrote it to fetch `/api/loyalty/program` + `/api/loyalty/me`, render real reward tiers (100pt Free chai, 200pt $5 off) with Redeem buttons (signed-in) or Sign-up CTAs (anon), and **initialise with local fallback tiers** so the section always renders even if the API is slow / fails.
+- **"Notify me when a new combo drops" opt-in** — three-touchpoint rollout:
+  - User-side toggle on web Account page + mobile AccountScreen (Bell icon row with descriptive subtext "Marketing pushes only — order alerts always come through").
+  - New endpoint `PATCH /api/auth/me/preferences` (currently accepts `marketing_opt_in`; designed to extend with email/SMS toggles later).
+  - Admin Broadcast tab now has an **audience selector**: "Opted-in customers" (recommended default, safer for sender reputation) vs "Everyone" (service alerts only). Confirmation dialog spells out the audience explicitly to prevent fat-finger sends.
+  - `services/push.py` `broadcast()` now filters by `audience='opted_in'` (only `users.marketing_opt_in:true`) or `'all'` (users + anonymous `device_tokens`).
+  - `UserPublic` now exposes `phone` and `marketing_opt_in`.
+- **EAS / TestFlight runbook** — `/app/mobile/TESTFLIGHT_RUNBOOK.md`. Step-by-step guide covering: one-time `eas init`, first iOS + Android builds + submit, universal-link wiring (Apple Team ID + Android SHA-256 → backend `.env` + `public/.well-known/*`), inviting beta testers, OTA updates via `eas update`, and a Troubleshooting matrix. Cannot run `eas build` from the agent (needs operator's Expo + Apple credentials) — runbook is the deliverable.
+- **Test coverage**: 124/124 pytest pass (105 regression + 11 iter11 + 8 new iter12 tests).
+
 ### 2026-04-26 — Iteration 11 (mobile deepening — push, deep-links, EAS)
 - **Push notifications via Expo Push Service** (free, no SDK):
   - New `services/push.py` (HTTPS POST to https://exp.host/--/api/v2/push/send) + `routers/devices.py` (`/api/devices/{register,unregister}`).
