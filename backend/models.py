@@ -19,7 +19,7 @@ def _now() -> str:
 #  - email: validated by EmailStr (no disposable-domain blocklist by design — too brittle)
 #  - password: 8+ chars, must include at least one letter AND one digit
 #  - phone (optional): AU mobile / landline E.164 or local 10-digit format
-_NAME_RE = re.compile(r"^[\w\s'\-.\u00C0-\u024F\u0400-\u04FF]{2,60}$", re.UNICODE)
+_NAME_RE = re.compile(r"^[A-Za-z\s'\-.\u00C0-\u024F\u0400-\u04FF]{2,60}$", re.UNICODE)
 _PASSWORD_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$")
 _AU_PHONE_RE = re.compile(r"^(?:\+?61|0)4\d{8}$|^(?:\+?61|0)[2378]\d{8}$")
 

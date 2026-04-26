@@ -52,6 +52,33 @@ Flipped from dark-mode-primary to warm cream primary theme matching chaioz.com.a
 - **Mobile app kickoff**: `/app/mobile` Expo scaffold with Auth, Menu, Cart, Checkout, Order confirm, Account (see `/app/mobile/README.md`). New `/api/auth/token` endpoint returns JWT in body for mobile Bearer auth.
 - **Test coverage**: 75/75 pytest pass (iter1 api + iter2 + iter5 + iter6 + iter7).
 
+### 2026-04-26 — Iteration 10 (defects + Square Loyalty)
+- **Stricter signup validation** (anti-spam):
+  - Name: 2–60 letters/spaces/hyphen/apostrophe (international-friendly via Unicode ranges)
+  - Password: 8+ chars, must include at least one letter AND one digit
+  - Phone: optional AU mobile/landline (E.164 `+61…` or local `0…` accepted)
+  - Disposable email domains blocked (mailinator, guerrillamail, yopmail, etc.)
+  - Web `/signup` shows live rule indicators (green tick / red cross). Mobile `RegisterScreen` mirrors the same rules.
+- **Square POS → website 2-way sync**:
+  - New `services/square_catalog.py` — fetches Square `catalog.list(types='ITEM')` and reflects each item's per-location availability into `menu_items.is_available` (best-effort name match).
+  - New admin endpoint `POST /api/admin/sync/square-menu` + "Sync from Square" button on the Admin → Menu tab.
+  - Webhook handler now reacts to `catalog.version.updated` and `inventory.count.updated` by triggering the same sync as a background task.
+- **Square Loyalty integration** (rules: 1pt/$1, 100pts = free chai, 200pts = $5 off):
+  - New `services/loyalty.py` wrapper around `client.loyalty.{programs,accounts,rewards}`.
+  - New `routers/loyalty.py` exposes `/api/loyalty/{program,me,calculate,redeem,redeem/{id}/finalize}`.
+  - Order pipeline now chains `sync_account_for_order` after each Square order push so the customer's Square balance + tier accrue automatically when they have a phone.
+  - `/api/loyalty/me` and `/api/loyalty/program` **degrade gracefully** when the Square merchant has not yet created a Loyalty program in their Dashboard — returns local fallback tiers (`100 pts = free chai`, `200 pts = $5 off`) and `needs_setup:true` so the UI keeps rendering.
+  - Account page renders a new "Chaioz Loyalty" card with Redeem buttons (disabled until balance ≥ tier).
+- **Test coverage**: 119/119 pytest pass (105 regression + 14 new iter10 tests).
+
+## How to enable Square Loyalty (manual step for the operator)
+1. Go to https://squareupsandbox.com → Dashboard → **Loyalty** → **Create a program**.
+2. Set the program name (e.g. "Chaioz Rewards"), accrual rule (1 point per AU$1), and create two reward tiers:
+   - 100 points → "Free chai" (free-item reward → pick the Karak Classic SKU)
+   - 200 points → "$5 off" (fixed discount → AU$5.00)
+3. Hit **Save**. No code change needed — `/api/loyalty/program` and `/api/loyalty/me` automatically pick it up.
+4. (Optional) Switch `SQUARE_ENVIRONMENT` to `production` in `backend/.env` and re-do steps 1-3 in the production dashboard before launch.
+
 ### 2026-04-23 — Iteration 8 (webhooks + admin combo UI)
 - **Square webhook handler**: `POST /api/webhooks/square` receives `order.updated` / `payment.updated` events from Square POS, verifies HMAC-SHA256 signature (`SQUARE_WEBHOOK_SIGNATURE_KEY`), maps fulfillment state (PROPOSED→confirmed, RESERVED→preparing, PREPARED→ready, COMPLETED→completed, CANCELED→cancelled) back onto our local order doc, and auto-fires the "order is ready" SMS when staff taps PREPARED on the Square tablet. Health check at `GET /api/webhooks/square/health`. NOTE: `SQUARE_WEBHOOK_SIGNATURE_KEY` is intentionally empty until the user creates the subscription in Square Developer Dashboard → paste the generated key into `backend/.env` → `sudo supervisorctl restart backend` to enable signature verification.
 - **Admin Combo CRUD UI**: new "Combos" tab on `/admin` page. `ComboEditor` dialog with multi-select item search + live "save $X" calculation. Create / edit / delete wired to existing `/api/admin/combos` endpoints.
