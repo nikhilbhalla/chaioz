@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtAUD } from "@/lib/api";
-import { Award, Coffee, Repeat, Loader2, Sparkles, Phone } from "lucide-react";
+import { Award, Coffee, Repeat, Loader2, Sparkles, Phone, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -164,7 +164,33 @@ export default function Account() {
         )}
       </div>
 
-      <div className="mt-12 border border-chaioz-line bg-white rounded-2xl p-6 flex items-center gap-4">
+      <div className="mt-12 border border-chaioz-line bg-white rounded-2xl p-6 flex items-center gap-4" data-testid="marketing-optin">
+        <Bell className="w-7 h-7 text-chaioz-saffron flex-shrink-0"/>
+        <div className="flex-1">
+          <p className="text-chaioz-teal font-medium">Notify me when a new combo drops</p>
+          <p className="text-xs text-chaioz-teal/60">Push notifications only — opt-out any time. Stays separate from order alerts (those always arrive).</p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={!!user.marketing_opt_in}
+          data-testid="marketing-optin-toggle"
+          onClick={async () => {
+            const next = !user.marketing_opt_in;
+            try {
+              await api.patch("/auth/me/preferences", { marketing_opt_in: next });
+              await refresh();
+              toast.success(next ? "You're on the combo VIP list 🎉" : "Opted out — we'll go quiet.");
+            } catch {
+              toast.error("Couldn't update — try again");
+            }
+          }}
+          className={`relative w-12 h-7 rounded-full transition-colors flex-shrink-0 ${user.marketing_opt_in ? "bg-chaioz-saffron" : "bg-chaioz-line"}`}
+        >
+          <span className={`absolute top-0.5 ${user.marketing_opt_in ? "left-6" : "left-0.5"} w-6 h-6 bg-white rounded-full shadow-sm transition-all`} />
+        </button>
+      </div>
+
+      <div className="mt-6 border border-chaioz-line bg-white rounded-2xl p-6 flex items-center gap-4">
         <Coffee className="w-8 h-8 text-chaioz-saffron"/>
         <div>
           <p className="text-chaioz-teal">Refer a friend, you both get $5 credit.</p>

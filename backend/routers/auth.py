@@ -31,9 +31,11 @@ def _public_user(user: dict) -> dict:
         "id": user["id"],
         "name": user["name"],
         "email": user["email"],
+        "phone": user.get("phone"),
         "role": user.get("role", "customer"),
         "loyalty_points": user.get("loyalty_points", 0),
         "loyalty_tier": user.get("loyalty_tier", "Bronze"),
+        "marketing_opt_in": bool(user.get("marketing_opt_in", False)),
         "created_at": user.get("created_at"),
     }
 
@@ -115,3 +117,18 @@ async def me(user: dict | None = Depends(get_optional_user)):
     if not user:
         return None
     return _public_user(user)
+
+
+@router.patch("/me/preferences")
+async def update_preferences(payload: dict, user: dict = Depends(get_current_user)):
+    """Update user's notification preferences. Currently only
+    `marketing_opt_in` (bool) — extend with email/SMS toggles when needed."""
+    from server import db
+    update: dict = {}
+    if "marketing_opt_in" in payload:
+        update["marketing_opt_in"] = bool(payload["marketing_opt_in"])
+    if not update:
+        raise HTTPException(status_code=400, detail="No supported preferences in payload")
+    await db.users.update_one({"id": user["id"]}, {"$set": update})
+    fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    return _public_user(fresh)

@@ -6,8 +6,9 @@ import { api, fmtAUD } from '../lib/api';
 import { colors, text } from '../theme';
 
 export default function AccountScreen({ navigation }) {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [optBusy, setOptBusy] = useState(false);
 
   useEffect(() => {
     if (user) api.get('/orders/me').then((r) => setOrders(r.data || [])).catch(() => {});
@@ -64,6 +65,32 @@ export default function AccountScreen({ navigation }) {
           ))
         )}
 
+        <Text style={[text.h3, { marginTop: 24 }]}>Notifications</Text>
+        <Pressable
+          testID="optin-toggle"
+          disabled={optBusy}
+          onPress={async () => {
+            setOptBusy(true);
+            try {
+              await api.patch('/auth/me/preferences', { marketing_opt_in: !user.marketing_opt_in });
+              await refresh();
+            } catch {
+              Alert.alert('Update failed', 'Try again in a moment.');
+            } finally {
+              setOptBusy(false);
+            }
+          }}
+          style={styles.optRow}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={[text.body, { fontWeight: '600' }]}>Notify me when a new combo drops</Text>
+            <Text style={[text.bodyDim, { fontSize: 11, marginTop: 2 }]}>Marketing pushes only — order alerts always come through.</Text>
+          </View>
+          <View style={[styles.switchTrack, { backgroundColor: user.marketing_opt_in ? colors.saffron : colors.line }]}>
+            <View style={[styles.switchThumb, { left: user.marketing_opt_in ? 24 : 2 }]} />
+          </View>
+        </Pressable>
+
         <Pressable onPress={logout} style={[styles.cta, { marginTop: 32, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line }]}>
           <Text style={{ color: colors.teal, fontWeight: '600' }}>Sign out</Text>
         </Pressable>
@@ -80,4 +107,7 @@ const styles = StyleSheet.create({
   loyalty: { marginTop: 22, padding: 18, backgroundColor: colors.teal, borderRadius: 18 },
   order: { marginTop: 10, padding: 12, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 12 },
   reorderBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: colors.saffron },
+  optRow: { marginTop: 14, padding: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line, borderRadius: 12, gap: 12 },
+  switchTrack: { width: 46, height: 26, borderRadius: 999, justifyContent: 'center', position: 'relative' },
+  switchThumb: { position: 'absolute', top: 2, width: 22, height: 22, borderRadius: 999, backgroundColor: '#FFFFFF' },
 });

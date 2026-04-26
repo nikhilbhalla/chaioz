@@ -65,9 +65,11 @@ class UserPublic(BaseModel):
     id: str
     name: str
     email: EmailStr
+    phone: Optional[str] = None
     role: str
     loyalty_points: int = 0
     loyalty_tier: str = "Bronze"
+    marketing_opt_in: bool = False
     created_at: str
 
 

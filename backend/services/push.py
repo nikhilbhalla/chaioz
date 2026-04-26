@@ -101,15 +101,23 @@ async def send_to_anon_token(token: str, title: str, body: str, data: Optional[d
     return await send_to_tokens([token], title, body, data)
 
 
-async def broadcast(title: str, body: str, data: Optional[dict] = None) -> dict:
-    """Marketing broadcast — pushes to every stored token across all users +
-    anonymous device tokens. De-duped by token."""
+async def broadcast(title: str, body: str, data: Optional[dict] = None, audience: str = "all") -> dict:
+    """Marketing broadcast — pushes to either every device (`audience='all'`)
+    or only customers who explicitly opted in (`audience='opted_in'`).
+    De-duped by token."""
     from server import db
     tokens: set = set()
-    async for u in db.users.find({"expo_push_tokens": {"$exists": True, "$ne": []}}, {"_id": 0, "expo_push_tokens": 1}):
+    user_filter = {"expo_push_tokens": {"$exists": True, "$ne": []}}
+    if audience == "opted_in":
+        user_filter["marketing_opt_in"] = True
+    async for u in db.users.find(user_filter, {"_id": 0, "expo_push_tokens": 1}):
         for t in u.get("expo_push_tokens") or []:
             tokens.add(t)
-    async for d in db.device_tokens.find({}, {"_id": 0, "token": 1}):
-        if d.get("token"):
-            tokens.add(d["token"])
+    if audience == "all":
+        # Anonymous device tokens are always treated as opted-out for marketing
+        # (no consent capture before login) — so we only include them on
+        # 'all' broadcasts, not on 'opted_in' which is the safer default.
+        async for d in db.device_tokens.find({}, {"_id": 0, "token": 1}):
+            if d.get("token"):
+                tokens.add(d["token"])
     return await send_to_tokens(tokens, title, body, data)

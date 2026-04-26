@@ -151,6 +151,9 @@ async def broadcast_push(payload: dict, _: dict = Depends(get_current_admin)):
     Apple/Google flag spammy senders. Recommended cadence: <= 2/week."""
     title = (payload.get("title") or "").strip()
     body = (payload.get("body") or "").strip()
+    audience = (payload.get("audience") or "all").lower()
+    if audience not in ("all", "opted_in"):
+        raise HTTPException(status_code=400, detail="audience must be 'all' or 'opted_in'")
     if not title or not body:
         raise HTTPException(status_code=400, detail="title and body required")
     if len(title) > 80 or len(body) > 200:
@@ -159,8 +162,9 @@ async def broadcast_push(payload: dict, _: dict = Depends(get_current_admin)):
         title,
         body,
         {"type": "marketing", "campaign": payload.get("campaign", "manual")},
+        audience=audience,
     )
-    return res
+    return {**res, "audience": audience}
 
 
 # ---------- Menu CRUD ----------

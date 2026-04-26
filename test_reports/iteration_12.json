@@ -1,0 +1,30 @@
+{
+  "summary": "Backend-only validation for Chaioz iter12: (1) PATCH /api/auth/me/preferences (auth required, payload validation, persistence of marketing_opt_in true/false), (2) UserPublic shape now exposing phone + marketing_opt_in via /api/auth/me, (3) POST /api/admin/broadcast/push with audience selector ('opted_in', 'all', invalid→400), (4) /api/loyalty/program shape sanity for the rewritten Rewards page. Iter12 suite 8/8 PASS. Full backend regression at /app/backend/tests/ → 124/124 PASS in 97.67s. No backend issues found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_chaioz_phase1_iter12.py",
+    "/app/test_reports/pytest/iter12_results.xml",
+    "/app/test_reports/pytest/iter12_full_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PATCH /api/auth/me/preferences currently only accepts the `marketing_opt_in` key — main agent has flagged this as intentional, with email/SMS toggles deferred. When extending, ensure the 400 message is updated and consider returning the list of supported keys in the error body for better DX.",
+    "Broadcast audience='all' fans out to all users + an anonymous device_tokens collection; consider a per-message dedupe key (audience+title+timestamp) on the push service so retries from admin UI do not double-send to opted-in users that also exist in device_tokens.",
+    "Loyalty Rewards page falls back to a local tier list when /api/loyalty/program is unreachable — main agent should confirm the local fallback values match the Square Loyalty rules to avoid showing stale rewards on Square outage."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "skipped"},
+  "test_credentials": "admin@chaioz.com.au / Chaioz@2026 (from /app/memory/test_credentials.md). New users for preferences tests created on the fly via /api/auth/register.",
+  "seed_data_creation": "Iter12 tests create disposable users (random email v<uuid>@gmail.com) for /me/preferences and /me shape validation. No persistent seed data added.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression baseline is now 124/124 PASS at /app/backend/tests/ (run with: cd /app/backend && python -m pytest tests/ -v). Iter12 added test_chaioz_phase1_iter12.py covering: marketing_opt_in preferences endpoint, audience-aware admin broadcast, UserPublic shape (phone + marketing_opt_in), and a loyalty/program shape sanity test for the rewritten Rewards page. Frontend (web /loyalty + /account toggle, mobile AccountScreen toggle, admin Broadcast tab audience selector) was explicitly out of scope for this iteration per the request — needs UI testing in next iteration if desired."
+}

@@ -469,6 +469,7 @@ export default function Admin() {
 function BroadcastTab() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [audience, setAudience] = useState("opted_in");
   const [busy, setBusy] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
@@ -478,13 +479,14 @@ function BroadcastTab() {
 
   const send = async () => {
     if (!ok) return;
-    if (!window.confirm(`Send "${title}" to every Chaioz app user?`)) return;
+    const audienceLabel = audience === "opted_in" ? "customers who opted in" : "EVERY device";
+    if (!window.confirm(`Send "${title}" to ${audienceLabel}?`)) return;
     setBusy(true);
     setLastResult(null);
     try {
-      const { data } = await api.post("/admin/broadcast/push", { title, body });
+      const { data } = await api.post("/admin/broadcast/push", { title, body, audience });
       setLastResult(data);
-      toast.success(`Broadcast sent to ${data.sent} devices`);
+      toast.success(`Broadcast sent to ${data.sent} devices (${data.audience})`);
       setTitle("");
       setBody("");
     } catch (e) {
@@ -497,7 +499,32 @@ function BroadcastTab() {
   return (
     <div className="max-w-2xl border border-chaioz-line bg-white rounded-2xl p-6" data-testid="admin-broadcast">
       <h3 className="font-serif text-2xl text-chaioz-teal">Push notification broadcast</h3>
-      <p className="text-xs text-chaioz-teal/60 mt-1">Goes to every device that has the app installed and granted push permission. Use sparingly — Apple/Google flag spammy senders.</p>
+      <p className="text-xs text-chaioz-teal/60 mt-1">Apple/Google penalise senders who push to people that didn't opt in. Default to <strong>Opted-in only</strong> unless it's a critical operational alert.</p>
+
+      <div className="mt-5">
+        <label className="text-xs text-chaioz-teal/70">Audience</label>
+        <div className="mt-2 flex gap-2 flex-wrap" data-testid="broadcast-audience">
+          {[
+            { id: "opted_in", label: "Opted-in customers", hint: "Recommended — safer for sender reputation." },
+            { id: "all", label: "Everyone", hint: "Use only for service-level alerts (e.g. closing early)." },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setAudience(opt.id)}
+              data-testid={`broadcast-audience-${opt.id}`}
+              className={`text-left px-4 py-3 rounded-xl border transition-colors flex-1 min-w-[200px] ${
+                audience === opt.id
+                  ? "border-chaioz-saffron bg-chaioz-saffron/10 text-chaioz-teal"
+                  : "border-chaioz-line bg-white text-chaioz-teal/80 hover:border-chaioz-saffron/50"
+              }`}
+            >
+              <p className="font-medium text-sm">{opt.label}</p>
+              <p className="text-[11px] text-chaioz-teal/60 mt-1">{opt.hint}</p>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="mt-5">
         <label className="text-xs text-chaioz-teal/70">Title <span className={titleLeft < 0 ? "text-red-500" : "text-chaioz-teal/40"}>({titleLeft})</span></label>
@@ -528,11 +555,11 @@ function BroadcastTab() {
         data-testid="broadcast-send"
         className="mt-5 rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal disabled:opacity-50"
       >
-        {busy ? "Sending..." : "Send broadcast"}
+        {busy ? "Sending..." : `Send to ${audience === "opted_in" ? "opted-in customers" : "everyone"}`}
       </Button>
       {lastResult && (
         <p className="mt-3 text-xs text-chaioz-teal/70" data-testid="broadcast-result">
-          Last result: sent to <strong>{lastResult.sent}</strong> devices{lastResult.errors ? ` · ${lastResult.errors} errors` : ""}.
+          Last result: sent to <strong>{lastResult.sent}</strong> devices ({lastResult.audience}){lastResult.errors ? ` · ${lastResult.errors} errors` : ""}.
         </p>
       )}
     </div>
