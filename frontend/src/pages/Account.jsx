@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, fmtAUD } from "@/lib/api";
-import { Award, Coffee, Repeat, Loader2 } from "lucide-react";
+import { Award, Coffee, Repeat, Loader2, Sparkles, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -10,9 +10,14 @@ export default function Account() {
   const { user, loading, refresh } = useAuth();
   const [orders, setOrders] = useState([]);
   const [reorderingId, setReorderingId] = useState(null);
+  const [loyalty, setLoyalty] = useState(null);
+  const [loyaltyBusy, setLoyaltyBusy] = useState(false);
 
   useEffect(() => {
-    if (user) api.get("/orders/me").then((r) => setOrders(r.data || []));
+    if (user) {
+      api.get("/orders/me").then((r) => setOrders(r.data || []));
+      api.get("/loyalty/me").then((r) => setLoyalty(r.data || null)).catch(() => setLoyalty(null));
+    }
   }, [user]);
 
   const handleReorder = async (orderId) => {
@@ -30,6 +35,25 @@ export default function Account() {
     }
   };
 
+  const handleRedeem = async (tier) => {
+    if (!loyalty?.account_id) return;
+    if ((loyalty.balance || 0) < tier.points) {
+      toast.error(`You need ${tier.points - loyalty.balance} more points`);
+      return;
+    }
+    setLoyaltyBusy(true);
+    try {
+      await api.post("/loyalty/redeem", { reward_tier_id: tier.id });
+      toast.success(`Reward unlocked — ${tier.name || `${tier.points} pts`}. Show this at the counter.`);
+      const fresh = await api.get("/loyalty/me");
+      setLoyalty(fresh.data);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Couldn't redeem — try again");
+    } finally {
+      setLoyaltyBusy(false);
+    }
+  };
+
   if (loading) return <div className="pt-32 text-center text-chaioz-teal/60" data-testid="account-loading">Brewing...</div>;
   if (!user) return <Navigate to="/login" replace />;
 
@@ -43,9 +67,61 @@ export default function Account() {
         </div>
         <div className="text-right relative z-10">
           <p className="text-xs uppercase tracking-widest text-chaioz-teal/60">Loyalty</p>
-          <p className="font-serif text-4xl text-chaioz-saffron mt-1" data-testid="account-points">{user.loyalty_points || 0}</p>
+          <p className="font-serif text-4xl text-chaioz-saffron mt-1" data-testid="account-points">{loyalty?.balance ?? user.loyalty_points ?? 0}</p>
           <p className="text-xs text-chaioz-teal/80 inline-flex items-center gap-1 mt-1"><Award className="w-3 h-3 text-chaioz-saffron"/> {user.loyalty_tier} tier</p>
         </div>
+      </div>
+
+      {/* ----- Square Loyalty card ----- */}
+      <div className="mt-8 border border-chaioz-line bg-white rounded-3xl p-6" data-testid="loyalty-card">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-chaioz-saffron/15 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-chaioz-saffron" />
+            </div>
+            <div>
+              <p className="font-serif text-2xl text-chaioz-teal">Chaioz Loyalty</p>
+              <p className="text-xs text-chaioz-teal/60">Earn 1 pt for every $1 spent. Synced with Square.</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-widest text-chaioz-teal/60">Available points</p>
+            <p className="font-serif text-3xl text-chaioz-saffron" data-testid="loyalty-balance">{loyalty?.balance ?? 0}</p>
+          </div>
+        </div>
+
+        {loyalty?.needs_phone ? (
+          <div className="flex items-center gap-2 text-sm text-chaioz-teal/70 bg-chaioz-cream rounded-xl px-4 py-3" data-testid="loyalty-needs-phone">
+            <Phone className="w-4 h-4 text-chaioz-saffron" />
+            Add a mobile number on checkout to start earning Square Loyalty points.
+          </div>
+        ) : (loyalty?.tiers && loyalty.tiers.length > 0) ? (
+          <div className="grid sm:grid-cols-2 gap-3" data-testid="loyalty-tiers">
+            {loyalty.tiers.map((t) => {
+              const pts = t.points || 0;
+              const ok = (loyalty.balance || 0) >= pts;
+              return (
+                <div key={t.id || t.name} className="border border-chaioz-line rounded-2xl p-4 flex items-center justify-between" data-testid={`loyalty-tier-${pts}`}>
+                  <div>
+                    <p className="font-medium text-chaioz-teal">{t.name || `${pts} pts reward`}</p>
+                    <p className="text-xs text-chaioz-teal/60">{pts} points</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleRedeem(t)}
+                    disabled={!ok || loyaltyBusy || !loyalty.account_id}
+                    className="rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal disabled:opacity-40"
+                    data-testid={`loyalty-redeem-${pts}`}
+                  >
+                    {ok ? "Redeem" : `${pts - (loyalty.balance || 0)} to go`}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-chaioz-teal/60">Reward tiers will appear once Square Loyalty is connected for your store.</p>
+        )}
       </div>
 
       <div className="mt-12">

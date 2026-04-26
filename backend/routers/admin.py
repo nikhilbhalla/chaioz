@@ -5,6 +5,7 @@ import uuid
 
 from auth_utils import get_current_admin
 from services.notifications import send_sms, format_au_phone, order_ready_sms
+from services.square_catalog import sync_menu_availability
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -293,3 +294,16 @@ async def delete_product(product_id: str, _: dict = Depends(get_current_admin)):
     if not res.deleted_count:
         raise HTTPException(status_code=404, detail="Product not found")
     return {"ok": True}
+
+
+# ---------- Square sync (POS → website) ----------
+@router.post("/sync/square-menu")
+async def sync_square_menu(_: dict = Depends(get_current_admin)):
+    """Pull live availability from Square's catalog and reflect it on the
+    website's menu. Admins hit this when staff have toggled an item to
+    'unavailable' on the Square tablet — or it can be triggered automatically
+    by the Square `catalog.version.updated` webhook."""
+    res = await sync_menu_availability()
+    if not res.get("success"):
+        raise HTTPException(status_code=502, detail=res.get("error", "Square error"))
+    return res

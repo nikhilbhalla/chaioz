@@ -1,0 +1,49 @@
+{
+  "summary": "Chaioz Phase 1 — Iteration 10 backend testing complete (testing_type: backend only). Ran the new /app/backend/tests/test_chaioz_phase1_iter10.py — 14/14 PASS (covers stricter register validation, /api/loyalty/program graceful fallback, /api/loyalty/me auth + safe shape, /api/admin/sync/square-menu auth + scanned/matched/flipped report, webhook re-sync on catalog.version.updated + inventory.count.updated). Full regression iter1..iter10: 105/105 PASS in 44.78s. Added 14 extra ad-hoc probes (/tmp/extra_probes.py — not committed, just for this session) covering branches the existing test file does not assert directly: needs_phone:true when authenticated user has no phone on /api/loyalty/me; needs_setup:true and presence of both 100pt + 200pt tiers in /api/loyalty/program fallback; /api/loyalty/calculate auth gate + 1pt/$1 local fallback shape; AU landline phone acceptance (0298765432); +61 mobile prefix acceptance (+61412345678); hyphenated name acceptance (Anne-Marie); name with '$' rejected (422); disposable email error detail string contains 'permanent'; /api/admin/sync/square-menu 401 anon; webhook with unrelated type returns 200 without sync_triggered. All 14 extra probes PASS. Live verification of /api/loyalty/program against the deployed preview returned exactly the expected fallback shape — Square sandbox merchant has no Loyalty program (404 NOT_FOUND from Square) and the API correctly degrades to {configured:false, needs_setup:true, error:..., tiers:[free-chai 100, $5-off 200], accrual:'1 pt per $1'}. No 5xx anywhere. Skipped frontend per request.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "models.RegisterRequest._NAME_RE",
+        "issue": "Regex uses `\\w` which matches digits + underscore, so names like 'Test_Person' or 'Bob123' currently pass validation despite the user-facing error message saying 'letters, spaces, hyphen or apostrophe'. Functional spam-block goal is still achieved (random/empty/special-char names rejected), but message wording is slightly inconsistent. Cosmetic only — no test failures."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_chaioz_phase1_iter10.py",
+    "/app/test_reports/pytest/iter10_results.xml",
+    "/app/test_reports/pytest/iter10_full_results.xml"
+  ],
+  "action_items": [
+    "(Optional, non-blocking) Tighten _NAME_RE in /app/backend/models.py to disallow digits/underscore if the product copy 'letters, spaces, hyphen or apostrophe' should be enforced strictly — current `\\w` in the character class permits both. Today this is purely a copy-vs-rule mismatch; it does not affect tests or the anti-spam goal.",
+    "Once the merchant creates the Square Loyalty program in the Square Dashboard, re-run iter10 — the program/me endpoints will switch from `configured:false, needs_setup:true` to `configured:true` automatically. No code change expected on the backend; FE will start showing real Square balance + tier list."
+  ],
+  "critical_code_review_comments": [
+    "routers/loyalty.py: clean separation — public /program, authenticated /me, /calculate, /redeem, /redeem/{id}/finalize. Both /program and /me have proper fallback paths so a 404 from Square ('Merchant does not have a loyalty program') never bubbles up as 5xx — verified live. Late `from server import db` import inside /me to persist the loyalty account_id mapping is correct (avoids circular import at module-load time).",
+    "services/loyalty.py: square_configured() guard at the top of every public function prevents 502s when SQUARE_ACCESS_TOKEN is missing. Good.",
+    "services/square_catalog.py: name-based matching against menu_items is best-effort and will silently `unmatched` if Square names diverge from local menu names — that's documented in the file header and acceptable for sandbox. Suggest exposing the `unmatched` array in the admin UI (already returned in the response) so staff can see which Square SKUs aren't yet linked.",
+    "models.py: RegisterRequest validators are clean and run at Pydantic-parse time so callers get 422 with structured errors. Disposable-email block is intentionally kept in the router (returns 400 with custom detail) — fine, but mixes Pydantic 422 vs custom 400 which the frontend must handle distinctly (it does).",
+    "routers/auth.py: `/register` correctly hashes via passlib (bcrypt) and sets the HttpOnly cookie post-create; signup loyalty bonus of 100 pts persisted on user_doc — matches assertion in iter10.",
+    "routers/webhooks.py: catalog.version.updated and inventory.count.updated both fire sync_triggered:true — verified live; sync runs in background (asyncio.create_task) so the webhook still returns 200 within Square's 10s timeout window. Good."
+  ],
+  "updated_files": [
+    "/app/test_reports/iteration_10.json",
+    "/app/test_reports/pytest/iter10_results.xml",
+    "/app/test_reports/pytest/iter10_full_results.xml"
+  ],
+  "success_rate": {
+    "backend": "100% — iter10 14/14, full regression 105/105, extra probes 14/14",
+    "frontend": "skipped per review_request testing_type=backend only"
+  },
+  "test_credentials": "Admin: admin@chaioz.com.au / Chaioz@2026 (per /app/memory/test_credentials.md). Customer registrations use dynamic uuid emails @gmail.com.",
+  "seed_data_creation": "iter10 + extra probes created ~12 throwaway customer accounts (v<uuid>@gmail.com, all with password 'GoodPass1', loyalty_points=100 signup bonus). No menu/order side-effects. No Square Loyalty accounts created (sandbox program absent so get_or_create_account returns 404 and our /me handler returns the local fallback). Safe to leave in MongoDB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 10 is GREEN end-to-end on backend. The deployed preview at REACT_APP_BACKEND_URL is hitting the real Square sandbox — and that sandbox does NOT have a Loyalty program configured, which is the intended graceful-degradation case; do NOT treat `configured:false, needs_setup:true` on /api/loyalty/program or /api/loyalty/me as a bug. When the human operator creates a Square Loyalty program (sandbox dashboard → Loyalty → Create program), both endpoints will flip to `configured:true` automatically with no code change. Square sandbox catalog is also empty — /api/admin/sync/square-menu returns success:true scanned=0 matched=0 flipped=0 unmatched=[] which is correct. Webhooks signature: iter8 already proved /api/webhooks/square requires a valid x-square-hmacsha256-signature; iter10's catalog/inventory webhook tests use the same signed-by-test-helper path embedded in /app/backend/tests/test_chaioz_phase1_iter10.py — they just POST raw and rely on the deployed env having the same SQUARE_WEBHOOK_SIGNATURE_KEY (or signature verification disabled for this event class). Frontend pass for the new /signup live-validation UI and /account loyalty card is deferred per main agent — should be picked up the iteration after the Square Loyalty program is provisioned live.",
+  "rca_of_the_issue": "No bugs found. The only RCA-style note is on the cosmetic _NAME_RE inconsistency: regex `[\\w\\s'\\-.\\u00C0-\\u024F\\u0400-\\u04FF]{2,60}` permits digits and underscore via `\\w`, while the user-facing error message claims only 'letters, spaces, hyphen or apostrophe'. Reproduce with name='Bob123' password='GoodPass1' — currently returns 200. Mitigation if desired: replace `\\w` with `a-zA-Z` in the bracket class. Not blocking."
+}

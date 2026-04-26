@@ -273,6 +273,23 @@ export default function Admin() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-chaioz-teal/50" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search menu..." data-testid="admin-menu-search" className="pl-9 bg-white border-chaioz-line text-chaioz-teal" />
             </div>
+            <Button
+              onClick={async () => {
+                try {
+                  const { data } = await api.post("/admin/sync/square-menu");
+                  toast.success(`Square sync — matched ${data.matched}, ${data.flipped} availability changes`);
+                  const fresh = await api.get("/admin/menu");
+                  setItems(fresh.data);
+                } catch (e) {
+                  toast.error(e.response?.data?.detail || "Sync failed");
+                }
+              }}
+              variant="outline"
+              data-testid="admin-menu-sync-square"
+              className="rounded-full border-chaioz-line bg-white text-chaioz-teal hover:text-chaioz-saffron"
+            >
+              Sync from Square
+            </Button>
             <Button onClick={openNew} data-testid="admin-menu-new" className="rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal">
               <Plus className="w-4 h-4 mr-1" /> New item
             </Button>

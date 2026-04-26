@@ -27,8 +27,10 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
-  const register = async (name, email, password) => {
-    await api.post('/auth/register', { name, email, password });
+  const register = async (name, email, password, phone) => {
+    const payload = { name, email, password };
+    if (phone) payload.phone = phone;
+    await api.post('/auth/register', payload);
     // register does not return a token body — exchange for one
     return await login(email, password);
   };

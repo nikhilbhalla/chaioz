@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from typing import List, Optional, Literal
 from datetime import datetime, timezone
+import re
 import uuid
 
 
@@ -13,10 +14,46 @@ def _now() -> str:
 
 
 # ---------- Auth ----------
+# Rules (anti-spam):
+#  - name: 2–60 chars, letters/spaces/'-'/'/dot only (allows international names)
+#  - email: validated by EmailStr (no disposable-domain blocklist by design — too brittle)
+#  - password: 8+ chars, must include at least one letter AND one digit
+#  - phone (optional): AU mobile / landline E.164 or local 10-digit format
+_NAME_RE = re.compile(r"^[\w\s'\-.\u00C0-\u024F\u0400-\u04FF]{2,60}$", re.UNICODE)
+_PASSWORD_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$")
+_AU_PHONE_RE = re.compile(r"^(?:\+?61|0)4\d{8}$|^(?:\+?61|0)[2378]\d{8}$")
+
+
 class RegisterRequest(BaseModel):
-    name: str
+    name: str = Field(min_length=2, max_length=60)
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: str = Field(min_length=8, max_length=128)
+    phone: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, v: str) -> str:
+        v = v.strip()
+        if not _NAME_RE.match(v):
+            raise ValueError("Name must be 2-60 chars (letters, spaces, hyphen or apostrophe)")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def _validate_password(cls, v: str) -> str:
+        if not _PASSWORD_RE.match(v):
+            raise ValueError("Password must be 8+ chars and include at least one letter and one digit")
+        return v
+
+    @field_validator("phone")
+    @classmethod
+    def _validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if not v:
+            return None
+        cleaned = re.sub(r"[\s\-()]", "", v)
+        if not _AU_PHONE_RE.match(cleaned):
+            raise ValueError("Phone must be a valid Australian number (e.g. 0412345678 or +61412345678)")
+        return cleaned
 
 
 class LoginRequest(BaseModel):

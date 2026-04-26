@@ -156,6 +156,14 @@ async def receive_webhook(request: Request, bg: BackgroundTasks):
         )
         return {"ok": True, "matched": True}
 
+    # Staff toggled item availability / sold-out on the Square tablet → re-sync
+    # our menu so out-of-stock items disappear from the website immediately.
+    if event_type in ("catalog.version.updated", "inventory.count.updated"):
+        from services.square_catalog import sync_menu_availability
+        bg.add_task(sync_menu_availability)
+        logger.info("Square webhook: %s → triggering catalog re-sync", event_type)
+        return {"ok": True, "matched": True, "sync_triggered": True}
+
     logger.info("Unhandled Square webhook: %s", event_type)
     return {"ok": True, "matched": False, "unhandled": event_type}
 

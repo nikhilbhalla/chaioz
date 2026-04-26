@@ -66,7 +66,7 @@ class TestAuth:
     def test_register_duplicate_email(self, user_session):
         r = requests.post(
             f"{API}/auth/register",
-            json={"name": "x", "email": user_session.user_email, "password": "abc12345"},
+            json={"name": "Test User", "email": user_session.user_email, "password": "abc12345"},
             timeout=30,
         )
         assert r.status_code == 400

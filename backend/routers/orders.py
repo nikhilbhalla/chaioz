@@ -13,6 +13,7 @@ from services.notifications import (
     order_ready_sms,
 )
 from services.square_pos import sync_order_async, is_configured as square_configured, _ensure_rfc3339
+from services.loyalty import sync_account_for_order, square_configured as loyalty_configured
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -116,9 +117,19 @@ async def create_order(
             {"$set": {"recovered_at": datetime.now(timezone.utc).isoformat()}},
         )
 
-    # Push to Square POS → staff KDS (non-blocking)
+    # Push to Square POS → staff KDS (non-blocking). The wrapper also fires
+    # the Square Loyalty accrual once the order has been pushed.
     if square_configured():
-        bg.add_task(sync_order_async, order.id, doc)
+        async def _sync_then_loyalty(order_id: str, doc: dict, user_doc: dict | None):
+            await sync_order_async(order_id, doc)
+            if user_doc and loyalty_configured():
+                # Re-read so we get the just-stored square_order_id
+                from server import db as _db
+                fresh = await _db.orders.find_one({"id": order_id}, {"_id": 0})
+                if fresh and fresh.get("square_order_id"):
+                    await sync_account_for_order(user_doc, fresh)
+
+        bg.add_task(_sync_then_loyalty, order.id, doc, user)
 
     doc.pop("_id", None)
     doc["points_earned"] = points_earned

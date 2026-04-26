@@ -41,7 +41,20 @@ def _public_user(user: dict) -> dict:
 @router.post("/register", response_model=UserPublic)
 async def register(payload: RegisterRequest, response: Response):
     from server import db
-    email = payload.email.lower()
+    email = payload.email.lower().strip()
+
+    # Lightweight anti-spam: block obvious disposable email domains. Keep the
+    # list short to avoid false positives — Pydantic + password rules already
+    # do most of the heavy lifting upstream.
+    disposable = {
+        "mailinator.com", "guerrillamail.com", "10minutemail.com",
+        "tempmail.com", "trashmail.com", "throwaway.email", "yopmail.com",
+        "fakeinbox.com", "sharklasers.com", "maildrop.cc",
+    }
+    domain = email.split("@", 1)[-1]
+    if domain in disposable:
+        raise HTTPException(status_code=400, detail="Please use a permanent email address")
+
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -50,6 +63,7 @@ async def register(payload: RegisterRequest, response: Response):
         "id": user_id,
         "name": payload.name.strip(),
         "email": email,
+        "phone": payload.phone,
         "password_hash": hash_password(payload.password),
         "role": "customer",
         "loyalty_points": 100,  # signup bonus
