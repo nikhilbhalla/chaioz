@@ -52,6 +52,7 @@ export default function Checkout() {
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
+  const [pickupOnly, setPickupOnly] = useState(false);
   // Memoised so the ISO strings don't regenerate on every render — otherwise
   // the Select's `value` never matches the current slots and displays blank.
   const slots = useMemo(() => pickupSlots(), []);
@@ -62,6 +63,18 @@ export default function Checkout() {
       setEmail(user.email);
     }
   }, [user]);
+
+  // Read operational settings once on mount — when pickup_only is on we hide
+  // the delivery toggle entirely and force fulfillment to pickup.
+  useEffect(() => {
+    api.get("/settings")
+      .then((r) => {
+        const po = !!r.data?.pickup_only;
+        setPickupOnly(po);
+        if (po) setFulfillment("pickup");
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!pickup && slots[0]) setPickup(slots[0].iso);
@@ -191,30 +204,44 @@ export default function Checkout() {
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-10">
         <div className="space-y-6">
-          {/* Fulfillment toggle */}
-          <div className="border border-chaioz-line rounded-2xl bg-white p-6 space-y-4">
-            <h2 className="font-serif text-2xl text-chaioz-teal">How are we serving you?</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setFulfillment("pickup")}
-                data-testid="fulfillment-pickup"
-                className={`text-left border rounded-xl p-4 ${fulfillment === "pickup" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
-              >
-                <Store className="w-5 h-5 text-chaioz-saffron mb-2" />
-                <p className="font-medium text-chaioz-teal">Pickup</p>
-                <p className="text-xs text-chaioz-teal/60 mt-1">Collect from North Adelaide</p>
-              </button>
-              <button
-                onClick={() => setFulfillment("delivery")}
-                data-testid="fulfillment-delivery"
-                className={`text-left border rounded-xl p-4 ${fulfillment === "delivery" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
-              >
-                <Truck className="w-5 h-5 text-chaioz-saffron mb-2" />
-                <p className="font-medium text-chaioz-teal">Uber Delivery</p>
-                <p className="text-xs text-chaioz-teal/60 mt-1">Door-to-door, ~35 min</p>
-              </button>
+          {/* Fulfillment toggle — hidden in pickup-only mode */}
+          {!pickupOnly && (
+            <div className="border border-chaioz-line rounded-2xl bg-white p-6 space-y-4">
+              <h2 className="font-serif text-2xl text-chaioz-teal">How are we serving you?</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setFulfillment("pickup")}
+                  data-testid="fulfillment-pickup"
+                  className={`text-left border rounded-xl p-4 ${fulfillment === "pickup" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
+                >
+                  <Store className="w-5 h-5 text-chaioz-saffron mb-2" />
+                  <p className="font-medium text-chaioz-teal">Pickup</p>
+                  <p className="text-xs text-chaioz-teal/60 mt-1">Collect from North Adelaide</p>
+                </button>
+                <button
+                  onClick={() => setFulfillment("delivery")}
+                  data-testid="fulfillment-delivery"
+                  className={`text-left border rounded-xl p-4 ${fulfillment === "delivery" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
+                >
+                  <Truck className="w-5 h-5 text-chaioz-saffron mb-2" />
+                  <p className="font-medium text-chaioz-teal">Uber Delivery</p>
+                  <p className="text-xs text-chaioz-teal/60 mt-1">Door-to-door, ~35 min</p>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+          {pickupOnly && (
+            <div
+              data-testid="pickup-only-notice"
+              className="border border-chaioz-saffron/40 bg-chaioz-saffron/10 rounded-2xl p-5 flex items-start gap-3"
+            >
+              <Store className="w-5 h-5 text-chaioz-saffron mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-chaioz-teal">Pickup only during soft launch</p>
+                <p className="text-sm text-chaioz-teal/70 mt-1">Collect your order from Unit 2, 132 O'Connell St, North Adelaide. Delivery will be back online soon.</p>
+              </div>
+            </div>
+          )}
 
           {/* Customer */}
           <div className="border border-chaioz-line rounded-2xl bg-white p-6 space-y-5">

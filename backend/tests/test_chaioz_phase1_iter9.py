@@ -24,7 +24,7 @@ BASE_URL = os.environ.get(
 ).rstrip("/")
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "admin@chaioz.com.au"
+ADMIN_EMAIL = "chaiozadl@gmail.com"
 ADMIN_PASSWORD = "Chaioz@2026"
 ALLOWED_RECIPIENT = "chaiozadl@gmail.com"
 BLOCKED_RECIPIENT = "nobody@example.com"

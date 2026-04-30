@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from datetime import datetime, timezone
+from typing import Literal, Optional
+from pydantic import BaseModel, EmailStr, Field
 import uuid
 
 from models import RegisterRequest, LoginRequest, UserPublic
@@ -10,6 +12,7 @@ from auth_utils import (
     get_current_user,
     get_optional_user,
 )
+from services import otp as otp_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -40,22 +43,28 @@ def _public_user(user: dict) -> dict:
     }
 
 
+DISPOSABLE_DOMAINS = {
+    "mailinator.com", "guerrillamail.com", "10minutemail.com",
+    "tempmail.com", "trashmail.com", "throwaway.email", "yopmail.com",
+    "fakeinbox.com", "sharklasers.com", "maildrop.cc",
+}
+
+
+def _ensure_clean_email(email: str) -> str:
+    domain = email.split("@", 1)[-1]
+    if domain in DISPOSABLE_DOMAINS:
+        raise HTTPException(status_code=400, detail="Please use a permanent email address")
+    return email
+
+
+# ---------- Legacy /register kept for the mobile app until it ships an OTP UI.
+# The web client now uses /signup/start + /signup/verify, which gates account
+# creation behind an OTP delivered to the user's email or phone.
+
 @router.post("/register", response_model=UserPublic)
 async def register(payload: RegisterRequest, response: Response):
     from server import db
-    email = payload.email.lower().strip()
-
-    # Lightweight anti-spam: block obvious disposable email domains. Keep the
-    # list short to avoid false positives — Pydantic + password rules already
-    # do most of the heavy lifting upstream.
-    disposable = {
-        "mailinator.com", "guerrillamail.com", "10minutemail.com",
-        "tempmail.com", "trashmail.com", "throwaway.email", "yopmail.com",
-        "fakeinbox.com", "sharklasers.com", "maildrop.cc",
-    }
-    domain = email.split("@", 1)[-1]
-    if domain in disposable:
-        raise HTTPException(status_code=400, detail="Please use a permanent email address")
+    email = _ensure_clean_email(payload.email.lower().strip())
 
     existing = await db.users.find_one({"email": email})
     if existing:
@@ -132,3 +141,97 @@ async def update_preferences(payload: dict, user: dict = Depends(get_current_use
     await db.users.update_one({"id": user["id"]}, {"$set": update})
     fresh = await db.users.find_one({"id": user["id"]}, {"_id": 0})
     return _public_user(fresh)
+
+
+
+# ---------- OTP-protected signup ------------------------------------------------
+class SignupStartRequest(RegisterRequest):
+    """Same fields as RegisterRequest plus the channel the user wants to use."""
+    channel: Literal["email", "phone"] = "email"
+
+
+class SignupVerifyRequest(BaseModel):
+    pending_id: str = Field(min_length=10, max_length=128)
+    code: str = Field(min_length=4, max_length=8)
+
+
+class SignupResendRequest(BaseModel):
+    pending_id: str = Field(min_length=10, max_length=128)
+
+
+@router.post("/signup/start")
+async def signup_start(payload: SignupStartRequest):
+    """Step 1 — validate the form, create a pending-signup doc, send an OTP.
+    No user is created and no auth cookie is set until /signup/verify succeeds."""
+    from server import db
+    email = _ensure_clean_email(payload.email.lower().strip())
+
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    if payload.channel == "phone":
+        if not payload.phone:
+            raise HTTPException(status_code=400, detail="Phone is required when verifying by SMS")
+        if await db.users.find_one({"phone": payload.phone}):
+            raise HTTPException(status_code=400, detail="Phone already registered")
+
+    try:
+        result = await otp_service.create_pending(
+            db,
+            name=payload.name.strip(),
+            email=email,
+            password=payload.password,
+            phone=payload.phone,
+            channel=payload.channel,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+@router.post("/signup/verify", response_model=UserPublic)
+async def signup_verify(payload: SignupVerifyRequest, response: Response):
+    """Step 2 — match the OTP, create the user, set the auth cookie."""
+    from server import db
+    try:
+        pending = await otp_service.verify_code(db, pending_id=payload.pending_id, code=payload.code)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Race-safe duplicate check — someone could have registered with the same
+    # email between /start and /verify.
+    if await db.users.find_one({"email": pending["email"]}):
+        await db.signup_otps.delete_one({"pending_id": payload.pending_id})
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user_id = str(uuid.uuid4())
+    user_doc = {
+        "id": user_id,
+        "name": pending["name"],
+        "email": pending["email"],
+        "phone": pending.get("phone"),
+        "password_hash": pending["password_hash"],
+        "role": "customer",
+        "loyalty_points": 100,
+        "loyalty_tier": "Bronze",
+        "favorites": [],
+        "verified_via": pending["channel"],
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.users.insert_one(user_doc)
+    await db.signup_otps.delete_one({"pending_id": payload.pending_id})
+
+    token = create_access_token(user_id, pending["email"], "customer")
+    _set_cookie(response, token)
+    return _public_user(user_doc)
+
+
+@router.post("/signup/resend")
+async def signup_resend(payload: SignupResendRequest):
+    from server import db
+    try:
+        result = await otp_service.resend_code(db, pending_id=payload.pending_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result

@@ -18,7 +18,7 @@ import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://late-night-chai-1.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
-ADMIN_EMAIL = "admin@chaioz.com.au"
+ADMIN_EMAIL = "chaiozadl@gmail.com"
 ADMIN_PASSWORD = "Chaioz@2026"
 
 ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")

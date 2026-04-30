@@ -30,8 +30,19 @@ logger = logging.getLogger("chaioz")
 
 
 async def seed_admin():
+    """Seed/update the primary admin and remove any deprecated admin
+    accounts listed in $OLD_ADMIN_EMAIL (comma-separated)."""
     email = os.environ.get("ADMIN_EMAIL", "admin@chaioz.com.au").lower()
     password = os.environ.get("ADMIN_PASSWORD", "Chaioz@2026")
+
+    # Cleanup: delete any old admin emails the operator has rotated away from.
+    raw_old = os.environ.get("OLD_ADMIN_EMAIL", "")
+    old_emails = [e.strip().lower() for e in raw_old.split(",") if e.strip().lower() and e.strip().lower() != email]
+    for old in old_emails:
+        res = await db.users.delete_one({"email": old})
+        if res.deleted_count:
+            logger.info("Deleted deprecated admin user: %s", old)
+
     existing = await db.users.find_one({"email": email})
     if not existing:
         await db.users.insert_one({
@@ -46,12 +57,15 @@ async def seed_admin():
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
         logger.info("Seeded admin user: %s", email)
-    elif not verify_password(password, existing["password_hash"]):
-        await db.users.update_one(
-            {"email": email},
-            {"$set": {"password_hash": hash_password(password), "role": "admin"}},
-        )
-        logger.info("Updated admin password")
+    else:
+        update = {}
+        if existing.get("role") != "admin":
+            update["role"] = "admin"
+        if not verify_password(password, existing["password_hash"]):
+            update["password_hash"] = hash_password(password)
+        if update:
+            await db.users.update_one({"email": email}, {"$set": update})
+            logger.info("Updated admin user (%s): %s", email, list(update.keys()))
 
 
 async def seed_menu():
@@ -133,6 +147,39 @@ async def seed_combos():
     logger.info("Seeded %d combos", len(defaults))
 
 
+async def seed_settings():
+    """Seed the operational settings doc on first boot. We default to
+    pickup-only ON + a soft-launch banner so a fresh production deploy is
+    safe even before the operator opens the admin panel.
+
+    Idempotent: existing fields are left untouched (so operator changes via
+    the admin panel are not overwritten on restart). Only missing fields are
+    populated, so that a partial pre-existing doc still gets sane defaults."""
+    DEFAULT_BANNER = (
+        "We're in soft launch — orders are pickup-only from North Adelaide. "
+        "Delivery + late-night hours coming soon. Thanks for the patience!"
+    )
+    existing = await db.settings.find_one({"key": "global"}) or {}
+    set_on_create = {
+        "key": "global",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    set_if_missing = {}
+    if "pickup_only" not in existing:
+        set_if_missing["pickup_only"] = True
+    if not (existing.get("soft_launch_banner") or "").strip():
+        # Either the field is missing or it's an empty string — both mean
+        # "operator hasn't customised it yet", so it's safe to seed.
+        set_if_missing["soft_launch_banner"] = DEFAULT_BANNER
+
+    if not existing:
+        await db.settings.insert_one({**set_on_create, **set_if_missing})
+        logger.info("Seeded default settings (pickup_only=True, banner set)")
+    elif set_if_missing:
+        await db.settings.update_one({"key": "global"}, {"$set": set_if_missing})
+        logger.info("Backfilled settings defaults: %s", list(set_if_missing.keys()))
+
+
 async def create_indexes():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
@@ -141,6 +188,10 @@ async def create_indexes():
     await db.orders.create_index("id", unique=True)
     await db.orders.create_index("user_id")
     await db.combos.create_index("id", unique=True)
+    # OTP collection — TTL on expires_at would auto-delete but we read string
+    # ISO timestamps so we just put a regular index on pending_id.
+    await db.signup_otps.create_index("pending_id", unique=True)
+    await db.signup_otps.create_index("identifier")
 
 
 @asynccontextmanager
@@ -150,6 +201,7 @@ async def lifespan(_: FastAPI):
     await seed_menu()
     await seed_products()
     await seed_combos()
+    await seed_settings()
     init_storage()
     # Start cart recovery background loop
     import asyncio as _asyncio

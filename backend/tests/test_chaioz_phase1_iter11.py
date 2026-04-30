@@ -25,7 +25,7 @@ BASE_URL = os.environ.get(
     "REACT_APP_BACKEND_URL", "https://late-night-chai-1.preview.emergentagent.com"
 ).rstrip("/")
 API = f"{BASE_URL}/api"
-ADMIN_EMAIL = "admin@chaioz.com.au"
+ADMIN_EMAIL = "chaiozadl@gmail.com"
 ADMIN_PASSWORD = "Chaioz@2026"
 
 VALID_TOKEN = "ExponentPushToken[ZZZZZZZZZZZZZZZZZZZZZZ]"

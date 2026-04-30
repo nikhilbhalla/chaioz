@@ -3,6 +3,7 @@ import { ShoppingBag, User, Menu as MenuIcon, X, LogOut } from "lucide-react";
 import { useState } from "react";
 import ChaiozLogo from "@/components/ChaiozLogo";
 import DayModeToggle from "@/components/DayModeToggle";
+import SoftLaunchBanner from "@/components/SoftLaunchBanner";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export default function Header() {
       className="fixed top-0 inset-x-0 z-50 glass-cream border-b border-chaioz-line"
       data-testid="site-header"
     >
+      <SoftLaunchBanner />
       <div className="max-w-7xl mx-auto px-5 sm:px-8 py-4 flex items-center gap-6">
         <Link to="/" className="flex items-center gap-2 shrink-0" data-testid="header-home-link">
           <ChaiozLogo variant="color" className="h-8 sm:h-9" />

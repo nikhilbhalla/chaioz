@@ -5,7 +5,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { DayModeProvider } from "@/contexts/DayModeContext";
 import Header from "@/components/layout/Header";
-import SoftLaunchBanner from "@/components/SoftLaunchBanner";
 import Footer from "@/components/layout/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import AppDownloadBanner from "@/components/AppDownloadBanner";
@@ -28,7 +27,6 @@ function App() {
         <AuthProvider>
           <DayModeProvider>
             <CartProvider>
-              <SoftLaunchBanner />
               <Header />
               <CartDrawer />
               <AppDownloadBanner />

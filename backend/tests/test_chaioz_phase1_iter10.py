@@ -26,7 +26,7 @@ BASE_URL = os.environ.get(
 ).rstrip("/")
 API = f"{BASE_URL}/api"
 WEBHOOK_URL = f"{API}/webhooks/square"
-ADMIN_EMAIL = "admin@chaioz.com.au"
+ADMIN_EMAIL = "chaiozadl@gmail.com"
 ADMIN_PASSWORD = "Chaioz@2026"
 
 
