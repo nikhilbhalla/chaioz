@@ -29,7 +29,7 @@ export default function InstagramFeed() {
     <div data-testid="instagram-feed">
       <div className="flex justify-between items-end mb-6">
         <div>
-          <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">@chaioz on the gram</span>
+          <span className="text-xs uppercase tracking-[0.3em] text-chaioz-saffron">@chaioz_aus on the gram</span>
           <h2 className="font-serif text-4xl text-chaioz-teal mt-2">Tag us. Get featured.</h2>
         </div>
         <a

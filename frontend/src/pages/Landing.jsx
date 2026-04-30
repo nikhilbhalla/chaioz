@@ -90,9 +90,9 @@ export default function Landing() {
             ) : (
               <>
                 <h1 className="font-serif text-5xl sm:text-7xl lg:text-8xl leading-[0.9] tracking-tight text-chaioz-cream text-balance">
-                  Your late-night
+                  Sip the fusion,
                   <br />
-                  <span className="text-chaioz-saffron italic">chai ritual.</span>
+                  <span className="text-chaioz-saffron italic">taste the tradition.</span>
                 </h1>
                 <p className="text-base md:text-lg text-chaioz-cream/85 mt-6 max-w-xl leading-relaxed">
                   Adelaide's first authentic Indian chai café. Brewed slow, served warm, made for the people who arrive when the city softens.

@@ -35,12 +35,13 @@ export default function Footer() {
         <div>
           <h4 className="text-sm uppercase tracking-[0.2em] text-chaioz-saffron mb-4 font-sans font-semibold">Hours</h4>
           <ul className="space-y-2 text-sm text-chaioz-cream/85">
-            <li>Mon – Thu &nbsp; 10am – 11pm</li>
-            <li>Fri – Sat &nbsp; 10am – 1am</li>
-            <li>Sunday &nbsp; 11am – 11pm</li>
+            <li>Mon – Thu &nbsp; 5pm – 10pm</li>
+            <li>Friday &nbsp; 5pm – 12am</li>
+            <li>Saturday &nbsp; 11am – 12am</li>
+            <li>Sunday &nbsp; 11am – 10pm</li>
           </ul>
-          <a href="https://instagram.com/chaioz" className="inline-flex items-center gap-2 mt-5 text-sm text-chaioz-cream/85 hover:text-chaioz-saffron" data-testid="footer-instagram">
-            <Instagram className="w-4 h-4" /> @chaioz
+          <a href="https://instagram.com/chaioz_aus" className="inline-flex items-center gap-2 mt-5 text-sm text-chaioz-cream/85 hover:text-chaioz-saffron" data-testid="footer-instagram">
+            <Instagram className="w-4 h-4" /> @chaioz_aus
           </a>
         </div>
       </div>
