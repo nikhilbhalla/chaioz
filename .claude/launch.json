@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start", "--cache", "/tmp/npm-cache"],
+      "cwd": "frontend",
+      "port": 3000
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "uvicorn",
+      "runtimeArgs": ["server:app", "--reload", "--port", "8000"],
+      "cwd": "backend",
+      "port": 8000
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "expo",
+      "runtimeArgs": ["start"],
+      "cwd": "mobile",
+      "port": 19000
+    }
+  ]
+}
