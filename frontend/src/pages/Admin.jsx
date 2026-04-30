@@ -5,6 +5,7 @@ import { api, fmtAUD } from "@/lib/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -217,6 +218,7 @@ export default function Admin() {
           <TabsTrigger value="products" data-testid="admin-tab-products" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Products</TabsTrigger>
           <TabsTrigger value="broadcast" data-testid="admin-tab-broadcast" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Broadcast</TabsTrigger>
           <TabsTrigger value="settings" data-testid="admin-tab-settings" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Settings</TabsTrigger>
+          <TabsTrigger value="account" data-testid="admin-tab-account" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Account</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="mt-6">
@@ -444,6 +446,10 @@ export default function Admin() {
         <TabsContent value="settings" className="mt-6">
           <SettingsTab />
         </TabsContent>
+
+        <TabsContent value="account" className="mt-6">
+          <AccountTab user={user} />
+        </TabsContent>
       </Tabs>
 
       <MenuItemEditor
@@ -643,6 +649,143 @@ function BroadcastTab() {
           Last result: sent to <strong>{lastResult.sent}</strong> devices ({lastResult.audience}){lastResult.errors ? ` · ${lastResult.errors} errors` : ""}.
         </p>
       )}
+    </div>
+  );
+}
+
+
+function AccountTab({ user }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [showPw, setShowPw] = useState(false);
+
+  const rules = [
+    { label: "8+ characters", ok: next.length >= 8 },
+    { label: "At least one letter", ok: /[A-Za-z]/.test(next) },
+    { label: "At least one number", ok: /\d/.test(next) },
+    { label: "Different from current", ok: next.length > 0 && next !== current },
+    { label: "Matches confirmation", ok: next.length > 0 && next === confirm },
+  ];
+  const allOk = rules.every((r) => r.ok) && current.length > 0;
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!allOk) {
+      setErr("Please fix the highlighted rules");
+      return;
+    }
+    setBusy(true);
+    setErr("");
+    try {
+      await api.post("/auth/change-password", {
+        current_password: current,
+        new_password: next,
+      });
+      toast.success("Password updated. Use the new one next time you sign in.");
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+    } catch (e2) {
+      setErr(e2.response?.data?.detail || "Could not update password");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="max-w-xl space-y-5" data-testid="admin-account">
+      <div className="border border-chaioz-line bg-white rounded-2xl p-6">
+        <h3 className="font-serif text-xl text-chaioz-teal">Account</h3>
+        <dl className="mt-4 space-y-2 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-chaioz-teal/60">Email</dt>
+            <dd className="text-chaioz-teal font-medium" data-testid="admin-account-email">{user.email}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-chaioz-teal/60">Role</dt>
+            <dd className="text-chaioz-teal font-medium uppercase tracking-wider text-xs">{user.role}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <form onSubmit={submit} className="border border-chaioz-line bg-white rounded-2xl p-6 space-y-4" data-testid="admin-change-password">
+        <div>
+          <h3 className="font-serif text-xl text-chaioz-teal">Change password</h3>
+          <p className="text-xs text-chaioz-teal/60 mt-1">Rotate your admin password. You'll stay logged in on this device but other sessions will silently sign out.</p>
+        </div>
+
+        <div>
+          <Label className="text-chaioz-teal/80">Current password</Label>
+          <Input
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            type={showPw ? "text" : "password"}
+            autoComplete="current-password"
+            required
+            data-testid="change-password-current"
+            className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal"
+          />
+        </div>
+
+        <div>
+          <Label className="text-chaioz-teal/80">New password</Label>
+          <Input
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            type={showPw ? "text" : "password"}
+            autoComplete="new-password"
+            required
+            data-testid="change-password-new"
+            className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal"
+          />
+        </div>
+
+        <div>
+          <Label className="text-chaioz-teal/80">Confirm new password</Label>
+          <Input
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            type={showPw ? "text" : "password"}
+            autoComplete="new-password"
+            required
+            data-testid="change-password-confirm"
+            className="mt-1 bg-chaioz-cream border-chaioz-line text-chaioz-teal"
+          />
+        </div>
+
+        <label className="flex items-center gap-2 text-xs text-chaioz-teal/70 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showPw}
+            onChange={(e) => setShowPw(e.target.checked)}
+            data-testid="change-password-show"
+            className="accent-chaioz-saffron"
+          />
+          Show passwords
+        </label>
+
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-y-1" data-testid="change-password-rules">
+          {rules.map((r) => (
+            <li key={r.label} className={`text-[11px] inline-flex items-center gap-1 ${r.ok ? "text-emerald-600" : "text-chaioz-teal/50"}`}>
+              {r.ok ? "✓" : "✕"} {r.label}
+            </li>
+          ))}
+        </ul>
+
+        {err && <p className="text-sm text-red-500" data-testid="change-password-error">{err}</p>}
+
+        <Button
+          type="submit"
+          disabled={busy || !allOk}
+          data-testid="change-password-submit"
+          className="rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal disabled:opacity-50"
+        >
+          {busy ? "Updating..." : "Update password"}
+        </Button>
+      </form>
     </div>
   );
 }

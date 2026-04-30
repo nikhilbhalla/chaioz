@@ -143,6 +143,50 @@ async def update_preferences(payload: dict, user: dict = Depends(get_current_use
     return _public_user(fresh)
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+@router.post("/change-password")
+async def change_password(
+    payload: ChangePasswordRequest,
+    response: Response,
+    user: dict = Depends(get_current_user),
+):
+    """Self-serve password rotation. Requires the current password as a guard
+    against session-hijack abuse, and rotates the JWT cookie so any other
+    device this user was logged into is silently signed out."""
+    from server import db
+
+    # Mirror the signup password rule (8+ chars, must contain a letter and a digit).
+    import re
+    if not re.match(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$", payload.new_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be 8+ chars and include at least one letter and one digit",
+        )
+
+    fresh = await db.users.find_one({"id": user["id"]})
+    if not fresh or not verify_password(payload.current_password, fresh["password_hash"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    if verify_password(payload.new_password, fresh["password_hash"]):
+        raise HTTPException(status_code=400, detail="New password must be different from the current one")
+
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "password_hash": hash_password(payload.new_password),
+            "password_changed_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    # Issue a fresh token so the cookie reflects the rotation.
+    token = create_access_token(user["id"], user["email"], user.get("role", "customer"))
+    _set_cookie(response, token)
+    return {"ok": True}
+
+
 
 # ---------- OTP-protected signup ------------------------------------------------
 class SignupStartRequest(RegisterRequest):

@@ -164,8 +164,22 @@ UBER_WEBHOOK_SIGNING_KEY=
 - Apple/Google Pay on web checkout
 
 ## Test credentials
-- Admin: `admin@chaioz.com.au` / `Chaioz@2026`
+- Admin: `chaiozadl@gmail.com` / `Chaioz@2026` (rotated 2026-04-30 — old `admin@chaioz.com.au` deleted)
 - Mobile-flow test account: registers dynamically per test run
+
+### 2026-04-30 — Iteration 14 (admin rotation, OTP signup gate, settings backfill, change password)
+- **Admin email rotation**: `seed_admin()` now reads `OLD_ADMIN_EMAIL` (comma-separated) and deletes those users on boot. Default admin switched to `chaiozadl@gmail.com`. Idempotent — survives restarts.
+- **Operational settings auto-seeded on boot**: `seed_settings()` backfills `pickup_only` + `soft_launch_banner` if missing. Default = pickup-only ON + soft-launch banner. Operator changes via `/admin → Settings` are NOT overwritten.
+- **Soft-launch banner now visible site-wide**: moved inside `<Header>` so it sits above the fixed nav (was hidden behind it).
+- **Checkout pickup-only enforcement**: `/checkout` reads `/api/settings.pickup_only` and replaces the fulfillment toggle with a "Pickup only during soft launch" notice; the delivery toggle is not rendered.
+- **OTP signup gate** (anti-spam — user picks email or SMS):
+  - `services/otp.py` — bcrypt-hashed 6-digit codes, 10 min TTL, max 5 verify attempts, max 3 sends/hour per identifier, masked target in responses.
+  - `routers/auth.py` — `POST /api/auth/signup/{start,verify,resend}`. Legacy `/register` kept for the unshipped mobile RN app.
+  - When delivery fails (Resend dev key, missing Twilio creds), the OTP is logged at WARN with `target=` + `code=` so the operator can complete the flow in non-prod. `dev_mode:true` is also returned to the client UI.
+  - `Signup.jsx` rewritten as a 2-step form → verify flow with channel selector, masked target display, auto-submit on 6 digits, resend, and "Edit details" back button.
+- **SEO + branding fixes**: `index.html` now sets `<title>` to "Chaioz — Authentic Indian Chai Café · North Adelaide", canonical URL `https://chaioz.com.au/`, OG/Twitter meta tags, and an `en_AU` locale.
+- **Change password (admin self-serve)**: new `POST /api/auth/change-password` (auth required). Verifies current password, blocks reuse, enforces 8+ chars/letter/digit rule, rotates the JWT cookie. New "Account" tab on `/admin` exposes the form.
+- **Test coverage**: 140/140 pytest pass (132 regression + 8 iter14). Old admin email constants in tests updated to the new email.
 
 ## Key file paths
 **Backend**
