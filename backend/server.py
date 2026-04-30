@@ -31,12 +31,17 @@ logger = logging.getLogger("chaioz")
 
 async def seed_admin():
     """Seed/update the primary admin and remove any deprecated admin
-    accounts listed in $OLD_ADMIN_EMAIL (comma-separated)."""
-    email = os.environ.get("ADMIN_EMAIL", "admin@chaioz.com.au").lower()
+    accounts listed in $OLD_ADMIN_EMAIL (comma-separated).
+
+    Defaults intentionally hardcode the post-rotation email + the deprecated
+    email so that a production deploy whose env-var config wasn't updated still
+    rotates the admin correctly. Operator can override via env when needed.
+    """
+    email = os.environ.get("ADMIN_EMAIL", "chaiozadl@gmail.com").lower()
     password = os.environ.get("ADMIN_PASSWORD", "Chaioz@2026")
 
     # Cleanup: delete any old admin emails the operator has rotated away from.
-    raw_old = os.environ.get("OLD_ADMIN_EMAIL", "")
+    raw_old = os.environ.get("OLD_ADMIN_EMAIL", "admin@chaioz.com.au")
     old_emails = [e.strip().lower() for e in raw_old.split(",") if e.strip().lower() and e.strip().lower() != email]
     for old in old_emails:
         res = await db.users.delete_one({"email": old})
