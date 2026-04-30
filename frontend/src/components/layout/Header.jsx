@@ -18,7 +18,7 @@ import {
 
 const links = [
   { to: "/menu", label: "Menu" },
-  { to: "/store", label: "Shop" },
+  // { to: "/store", label: "Shop" },  // Hidden until retail (chai blends + gift boxes) is launch-ready
   { to: "/loyalty", label: "Rewards" },
   { to: "/community", label: "Community" },
 ];

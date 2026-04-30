@@ -26,7 +26,6 @@ export default function Footer() {
           <h4 className="text-sm uppercase tracking-[0.2em] text-chaioz-saffron mb-4 font-sans font-semibold">Explore</h4>
           <ul className="space-y-2 text-sm text-chaioz-cream/85">
             <li><Link to="/menu" className="hover:text-chaioz-saffron">Menu</Link></li>
-            <li><Link to="/store" className="hover:text-chaioz-saffron">Shop Chai Blends</Link></li>
             <li><Link to="/loyalty" className="hover:text-chaioz-saffron">Rewards</Link></li>
             <li><Link to="/community" className="hover:text-chaioz-saffron">Community & Events</Link></li>
           </ul>
