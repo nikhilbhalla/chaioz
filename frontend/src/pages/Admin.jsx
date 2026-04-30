@@ -33,6 +33,8 @@ import { toast } from "sonner";
 import MenuItemEditor from "@/components/admin/MenuItemEditor";
 import ComboEditor from "@/components/admin/ComboEditor";
 import ProductEditor from "@/components/admin/ProductEditor";
+import UsersTab from "@/components/admin/UsersTab";
+import EmailDeliveryCard from "@/components/admin/EmailDeliveryCard";
 
 const STATUS = ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"];
 
@@ -218,6 +220,7 @@ export default function Admin() {
           <TabsTrigger value="products" data-testid="admin-tab-products" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Products</TabsTrigger>
           <TabsTrigger value="broadcast" data-testid="admin-tab-broadcast" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Broadcast</TabsTrigger>
           <TabsTrigger value="settings" data-testid="admin-tab-settings" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Settings</TabsTrigger>
+          <TabsTrigger value="users" data-testid="admin-tab-users" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Users</TabsTrigger>
           <TabsTrigger value="account" data-testid="admin-tab-account" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Account</TabsTrigger>
         </TabsList>
 
@@ -447,6 +450,10 @@ export default function Admin() {
           <SettingsTab />
         </TabsContent>
 
+        <TabsContent value="users" className="mt-6">
+          <UsersTab currentAdmin={user} />
+        </TabsContent>
+
         <TabsContent value="account" className="mt-6">
           <AccountTab user={user} />
         </TabsContent>
@@ -507,6 +514,8 @@ function SettingsTab() {
 
   return (
     <div className="max-w-2xl space-y-5" data-testid="admin-settings">
+      <EmailDeliveryCard />
+
       <div className="border border-chaioz-line bg-white rounded-2xl p-6">
         <div className="flex items-start gap-4">
           <div className="flex-1">

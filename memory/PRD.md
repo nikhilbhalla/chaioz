@@ -167,6 +167,16 @@ UBER_WEBHOOK_SIGNING_KEY=
 - Admin: `chaiozadl@gmail.com` / `Chaioz@2026` (rotated 2026-04-30 — old `admin@chaioz.com.au` deleted)
 - Mobile-flow test account: registers dynamically per test run
 
+### 2026-04-30 — Iteration 15 (admin user CRUD + email diagnostics)
+- **Admin User Management** (`/admin → Users` tab):
+  - Backend: `GET /api/admin/users?q=&role=&limit=&skip=` (search + paginate), `POST /api/admin/users` (create without OTP), `PATCH /api/admin/users/{id}` (name/phone/role/loyalty_points/marketing), `POST /api/admin/users/{id}/reset-password` (force-set), `DELETE /api/admin/users/{id}`. Self-demote and self-delete are blocked server-side.
+  - Frontend: `UsersTab.jsx` with search, role filter, paginated table, Create/Edit/Reset-password/Delete dialogs. Generate-password helper produces a 12-char alpha+numeric mix.
+- **Email delivery diagnostics** (Settings tab):
+  - `GET /api/admin/email/status` returns `{has_resend_key, sender_email, using_sandbox_sender, delivers_to_anyone, fix_steps}`.
+  - `POST /api/admin/email/test` sends a one-off test through the same Resend wiring as customer OTPs.
+  - `EmailDeliveryCard.jsx` surfaces the status with traffic-light colors + step-by-step fix instructions when stuck on the Resend sandbox sender.
+- **Hardened admin seed defaults**: `seed_admin()` defaults `ADMIN_EMAIL=chaiozadl@gmail.com` and `OLD_ADMIN_EMAIL=admin@chaioz.com.au` so a production deploy whose env-var config wasn't updated still rotates the admin correctly.
+
 ### 2026-04-30 — Iteration 14 (admin rotation, OTP signup gate, settings backfill, change password)
 - **Admin email rotation**: `seed_admin()` now reads `OLD_ADMIN_EMAIL` (comma-separated) and deletes those users on boot. Default admin switched to `chaiozadl@gmail.com`. Idempotent — survives restarts.
 - **Operational settings auto-seeded on boot**: `seed_settings()` backfills `pickup_only` + `soft_launch_banner` if missing. Default = pickup-only ON + soft-launch banner. Operator changes via `/admin → Settings` are NOT overwritten.

@@ -367,3 +367,196 @@ async def sync_square_menu(_: dict = Depends(get_current_admin)):
     if not res.get("success"):
         raise HTTPException(status_code=502, detail=res.get("error", "Square error"))
     return res
+
+
+
+# ---------- User management (CRUD) ---------------------------------------------
+def _public_user_admin(u: dict) -> dict:
+    """Admin-facing user shape — never includes the password hash."""
+    return {
+        "id": u.get("id"),
+        "name": u.get("name"),
+        "email": u.get("email"),
+        "phone": u.get("phone"),
+        "role": u.get("role", "customer"),
+        "loyalty_points": u.get("loyalty_points", 0),
+        "loyalty_tier": u.get("loyalty_tier", "Bronze"),
+        "marketing_opt_in": bool(u.get("marketing_opt_in", False)),
+        "verified_via": u.get("verified_via"),
+        "created_at": u.get("created_at"),
+        "last_login_at": u.get("last_login_at"),
+    }
+
+
+@router.get("/users")
+async def list_users(
+    q: str | None = None,
+    role: str | None = None,
+    limit: int = 100,
+    skip: int = 0,
+    _: dict = Depends(get_current_admin),
+):
+    """Search users by name/email/phone with pagination."""
+    from server import db
+    filt: dict = {}
+    if role:
+        filt["role"] = role
+    if q:
+        # Case-insensitive partial match on the most useful fields.
+        import re
+        rex = re.escape(q.strip())
+        filt["$or"] = [
+            {"email": {"$regex": rex, "$options": "i"}},
+            {"name": {"$regex": rex, "$options": "i"}},
+            {"phone": {"$regex": rex, "$options": "i"}},
+        ]
+    total = await db.users.count_documents(filt)
+    cursor = db.users.find(filt, {"_id": 0, "password_hash": 0}).sort("created_at", -1).skip(max(0, skip)).limit(min(max(1, limit), 500))
+    docs = await cursor.to_list(length=limit)
+    return {"total": total, "items": [_public_user_admin(u) for u in docs]}
+
+
+@router.post("/users")
+async def admin_create_user(payload: dict, _: dict = Depends(get_current_admin)):
+    """Create a user without going through the OTP flow. Useful for staff
+    accounts and for support-led sign-ups when email delivery is broken."""
+    from server import db
+    from auth_utils import hash_password
+    name = (payload.get("name") or "").strip()
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+    role = payload.get("role") or "customer"
+    phone = payload.get("phone")
+
+    if not name or not email or not password:
+        raise HTTPException(status_code=400, detail="name, email, password are required")
+    if role not in ("customer", "admin"):
+        raise HTTPException(status_code=400, detail="role must be 'customer' or 'admin'")
+    if len(password) < 8 or not any(c.isalpha() for c in password) or not any(c.isdigit() for c in password):
+        raise HTTPException(status_code=400, detail="Password must be 8+ chars, include a letter and a digit")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "password_hash": hash_password(password),
+        "role": role,
+        "loyalty_points": 0,
+        "loyalty_tier": "Bronze",
+        "favorites": [],
+        "verified_via": "admin_created",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.users.insert_one(doc)
+    return _public_user_admin(doc)
+
+
+@router.patch("/users/{user_id}")
+async def admin_update_user(user_id: str, payload: dict, admin: dict = Depends(get_current_admin)):
+    """Update name, phone, role, or marketing_opt_in. Email and password
+    have dedicated endpoints (see /password and you can't change email here
+    without breaking auth flows)."""
+    from server import db
+    update: dict = {}
+    if "name" in payload:
+        name = (payload.get("name") or "").strip()
+        if len(name) < 2:
+            raise HTTPException(status_code=400, detail="Name must be at least 2 characters")
+        update["name"] = name
+    if "phone" in payload:
+        update["phone"] = payload.get("phone") or None
+    if "role" in payload:
+        if payload["role"] not in ("customer", "admin"):
+            raise HTTPException(status_code=400, detail="role must be 'customer' or 'admin'")
+        # Guard: don't let an admin demote themselves and orphan the system.
+        if user_id == admin["id"] and payload["role"] != "admin":
+            raise HTTPException(status_code=400, detail="You can't demote your own admin account")
+        update["role"] = payload["role"]
+    if "loyalty_points" in payload:
+        update["loyalty_points"] = max(0, int(payload["loyalty_points"]))
+    if "marketing_opt_in" in payload:
+        update["marketing_opt_in"] = bool(payload["marketing_opt_in"])
+
+    if not update:
+        raise HTTPException(status_code=400, detail="No supported fields in payload")
+
+    res = await db.users.update_one({"id": user_id}, {"$set": update})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="User not found")
+    fresh = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    return _public_user_admin(fresh)
+
+
+@router.post("/users/{user_id}/reset-password")
+async def admin_reset_password(user_id: str, payload: dict, _: dict = Depends(get_current_admin)):
+    """Force-set a user's password (admin override — no current-pw check).
+    Returns ok:true. Caller should communicate the new password out-of-band."""
+    from server import db
+    from auth_utils import hash_password
+    new_password = (payload.get("new_password") or "").strip()
+    if len(new_password) < 8 or not any(c.isalpha() for c in new_password) or not any(c.isdigit() for c in new_password):
+        raise HTTPException(status_code=400, detail="Password must be 8+ chars, include a letter and a digit")
+
+    res = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "password_hash": hash_password(new_password),
+            "password_changed_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"ok": True}
+
+
+@router.delete("/users/{user_id}")
+async def admin_delete_user(user_id: str, admin: dict = Depends(get_current_admin)):
+    from server import db
+    if user_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="You can't delete your own account")
+    res = await db.users.delete_one({"id": user_id})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"ok": True}
+
+
+# ---------- Email delivery diagnostics -----------------------------------------
+@router.get("/email/status")
+async def email_status(_: dict = Depends(get_current_admin)):
+    """Surface the current Resend config + restrictions so the operator can
+    see at a glance why customer emails aren't delivering."""
+    import os
+    sender = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+    has_key = bool(os.environ.get("RESEND_API_KEY"))
+    using_sandbox = sender.endswith("@resend.dev")
+    return {
+        "has_resend_key": has_key,
+        "sender_email": sender,
+        "using_sandbox_sender": using_sandbox,
+        "delivers_to_anyone": has_key and not using_sandbox,
+        "fix_steps": [
+            "Verify chaioz.com.au at https://resend.com/domains (add the DNS records to Cloudflare).",
+            "Once verified, set SENDER_EMAIL=orders@chaioz.com.au in the production env.",
+            "Restart the backend — customer OTPs will then deliver to any email.",
+        ] if using_sandbox else [],
+    }
+
+
+@router.post("/email/test")
+async def email_test(payload: dict, _: dict = Depends(get_current_admin)):
+    """Send a one-off test email to confirm Resend is delivering. Body must
+    include {"to": "..."}; falls back to admin's own email if missing."""
+    from services.notifications import send_email
+    to = (payload.get("to") or "").strip()
+    if not to:
+        raise HTTPException(status_code=400, detail="`to` is required")
+    html = """
+    <div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:480px;margin:auto;background:#0F4C4A;color:#FDFBF7;padding:32px;border-radius:16px">
+      <h1 style="font-family:Georgia,serif;color:#E8A84A;margin:0 0 12px;font-size:24px">Test email from Chaioz</h1>
+      <p style="color:rgba(253,251,247,0.85);margin:0">If you can read this, Resend is delivering correctly to recipients beyond the verified admin email. 🎉</p>
+    </div>"""
+    result = await send_email(to, "Chaioz delivery test", html)
+    return result
