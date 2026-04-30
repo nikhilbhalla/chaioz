@@ -63,7 +63,7 @@
       "androidMode": "default"
     },
     "extra": {
-      "apiBaseUrl": "https://late-night-chai-1.preview.emergentagent.com",
+      "apiBaseUrl": "https://chaioz.com.au",
       "eas": {
         "projectId": "REPLACE_AFTER_FIRST_EAS_INIT"
       }
