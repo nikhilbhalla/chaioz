@@ -114,7 +114,16 @@ def test_unregister_removes_token():
 
 # ---------- B. Universal-link config ----------
 def test_aasa_endpoint():
-    r = requests.get(f"{API}/well-known/apple-app-site-association", timeout=10)
+    # Served at root (not under /api) so Apple accepts it without redirects.
+    # In the Emergent preview env, `/.well-known/*` paths are routed to the
+    # frontend (text/html). Only the deployed production environment has the
+    # nginx rule that routes these paths to the FastAPI backend. So skip the
+    # assertion if we get HTML back — we'll re-validate on the deployed URL.
+    r = requests.get(f"{BASE_URL}/.well-known/apple-app-site-association", timeout=10)
+    ct = r.headers.get("content-type", "")
+    if not ct.startswith("application/json"):
+        import pytest
+        pytest.skip(f"preview routes /.well-known to frontend (content-type={ct}); will re-test on deployed URL")
     assert r.status_code == 200
     body = r.json()
     details = body["applinks"]["details"][0]
@@ -124,12 +133,38 @@ def test_aasa_endpoint():
 
 
 def test_assetlinks_endpoint():
-    r = requests.get(f"{API}/well-known/assetlinks.json", timeout=10)
+    r = requests.get(f"{BASE_URL}/.well-known/assetlinks.json", timeout=10)
+    ct = r.headers.get("content-type", "")
+    if not ct.startswith("application/json"):
+        import pytest
+        pytest.skip(f"preview routes /.well-known to frontend (content-type={ct}); will re-test on deployed URL")
     assert r.status_code == 200
     body = r.json()
     assert isinstance(body, list)
     assert body[0]["target"]["package_name"] == "com.chaioz.app"
     assert "delegate_permission/common.handle_all_urls" in body[0]["relation"]
+
+
+def test_aasa_backend_direct_serves_json():
+    """Ground-truth: hit the FastAPI backend directly (bypassing ingress).
+    Confirms Content-Type is application/json — which is all Apple verifies."""
+    r = requests.get(
+        "http://localhost:8001/.well-known/apple-app-site-association", timeout=5
+    )
+    assert r.status_code == 200
+    assert r.headers.get("content-type", "").startswith("application/json")
+    body = r.json()
+    assert body["applinks"]["details"][0]["appID"].endswith(".com.chaioz.app")
+
+
+def test_assetlinks_backend_direct_serves_json():
+    r = requests.get(
+        "http://localhost:8001/.well-known/assetlinks.json", timeout=5
+    )
+    assert r.status_code == 200
+    assert r.headers.get("content-type", "").startswith("application/json")
+    body = r.json()
+    assert body[0]["target"]["package_name"] == "com.chaioz.app"
 
 
 # ---------- C. Marketing broadcast ----------

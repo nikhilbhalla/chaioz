@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -214,26 +215,33 @@ ANDROID_CERT_FINGERPRINTS = [
 ]
 
 
-@app.get("/api/well-known/apple-app-site-association")
+@app.get("/.well-known/apple-app-site-association")
 async def aasa():
-    return {
-        "applinks": {
-            "apps": [],
-            "details": [{
-                "appID": f"{APPLE_TEAM_ID}.com.chaioz.app",
-                "paths": ["/order/*", "/menu", "/menu/*", "/account", "/loyalty"],
-            }],
-        }
-    }
-
-
-@app.get("/api/well-known/assetlinks.json")
-async def assetlinks():
-    return [{
-        "relation": ["delegate_permission/common.handle_all_urls"],
-        "target": {
-            "namespace": "android_app",
-            "package_name": "com.chaioz.app",
-            "sha256_cert_fingerprints": ANDROID_CERT_FINGERPRINTS or ["FILL_AFTER_FIRST_EAS_BUILD"],
+    """Served as application/json at the root path so Apple accepts it."""
+    return JSONResponse(
+        content={
+            "applinks": {
+                "apps": [],
+                "details": [{
+                    "appID": f"{APPLE_TEAM_ID}.com.chaioz.app",
+                    "paths": ["/order/*", "/menu", "/menu/*", "/account", "/loyalty"],
+                }],
+            }
         },
-    }]
+        media_type="application/json",
+    )
+
+
+@app.get("/.well-known/assetlinks.json")
+async def assetlinks():
+    return JSONResponse(
+        content=[{
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+                "namespace": "android_app",
+                "package_name": "com.chaioz.app",
+                "sha256_cert_fingerprints": ANDROID_CERT_FINGERPRINTS or ["FILL_AFTER_FIRST_EAS_BUILD"],
+            },
+        }],
+        media_type="application/json",
+    )
