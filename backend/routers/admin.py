@@ -244,6 +244,7 @@ async def create_combo(payload: dict, _: dict = Depends(get_current_admin)):
         "bundle_price": float(payload["bundle_price"]),
         "badge": payload.get("badge", ""),
         "icon": payload.get("icon", "sparkles"),
+        "image_url": payload.get("image_url") or "",
         "is_active": bool(payload.get("is_active", True)),
         "sort_order": int(payload.get("sort_order", 999)),
     }
@@ -264,6 +265,33 @@ async def update_combo(combo_id: str, payload: dict, _: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Combo not found")
     doc = await db.combos.find_one({"id": combo_id}, {"_id": 0})
     return doc
+
+
+# ---------- Settings (operational toggles) ----------
+@router.get("/settings")
+async def get_settings(_: dict = Depends(get_current_admin)):
+    """Operational toggles — pickup_only, soft_launch banner, etc."""
+    from server import db
+    doc = await db.settings.find_one({"key": "global"}, {"_id": 0}) or {}
+    doc.pop("key", None)
+    return {
+        "pickup_only": bool(doc.get("pickup_only", False)),
+        "soft_launch_banner": doc.get("soft_launch_banner", "") or "",
+    }
+
+
+@router.put("/settings")
+async def update_settings(payload: dict, _: dict = Depends(get_current_admin)):
+    from server import db
+    update = {}
+    if "pickup_only" in payload:
+        update["pickup_only"] = bool(payload["pickup_only"])
+    if "soft_launch_banner" in payload:
+        update["soft_launch_banner"] = (payload["soft_launch_banner"] or "")[:280]
+    if not update:
+        raise HTTPException(status_code=400, detail="No supported settings in payload")
+    await db.settings.update_one({"key": "global"}, {"$set": update}, upsert=True)
+    return await get_settings(_)
 
 
 @router.delete("/combos/{combo_id}")

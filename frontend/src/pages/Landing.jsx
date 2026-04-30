@@ -18,12 +18,19 @@ const POURING_IMG = "https://images.pexels.com/photos/18413480/pexels-photo-1841
 
 export default function Landing() {
   const [bestsellers, setBestsellers] = useState([]);
+  const [comboTiles, setComboTiles] = useState([]);
   const [activeItem, setActiveItem] = useState(null);
   const { addItem } = useCart();
   const { isMorning } = useDayMode();
 
   useEffect(() => {
     api.get("/menu/bestsellers").then((r) => setBestsellers(r.data || [])).catch(() => {});
+    // Only show combos that have a real image — no image = auto-hidden so
+    // we never display a stock photo against a mis-matching combo name.
+    api.get("/menu/combos").then((r) => {
+      const withImages = (r.data || []).filter((c) => c.image_url && c.image_url.trim());
+      setComboTiles(withImages.slice(0, 3));
+    }).catch(() => {});
   }, []);
 
   const onAdd = (item) => {
@@ -157,27 +164,32 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* COMBO STRIP */}
-      <section className="max-w-7xl mx-auto px-6 sm:px-8 py-12 grid md:grid-cols-3 gap-5" data-testid="combos-section">
-        {[
-          { title: "Chai + Bun Maska", price: "10.50", subtitle: "Adelaide's $10 ritual.", img: SNACKS_IMG },
-          { title: "Late Night Combo", price: "16.00", subtitle: "Karak chai + samosa + kulfi.", img: NIGHT_IMG },
-          { title: "Brekie Deal", price: "11.95", subtitle: "Wrap + hashbrown + chai. Til 3pm.", img: POURING_IMG },
-        ].map((c, i) => (
-          <div key={i} data-testid={`combo-card-${i}`} className="relative h-72 rounded-2xl overflow-hidden border border-chaioz-line group cursor-pointer">
-            <img src={c.img} alt={c.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-t from-chaioz-teal via-chaioz-teal/60 to-transparent" />
-            <div className="absolute bottom-0 inset-x-0 p-6">
-              <p className="text-xs uppercase tracking-widest text-chaioz-saffron mb-1">Combo</p>
-              <h3 className="font-serif text-2xl text-chaioz-cream">{c.title}</h3>
-              <p className="text-sm text-chaioz-cream/85 mt-1">{c.subtitle}</p>
-              <span className="inline-block mt-3 bg-chaioz-saffron text-chaioz-teal text-sm font-medium px-3 py-1 rounded-full">
-                from ${c.price}
-              </span>
-            </div>
-          </div>
-        ))}
-      </section>
+      {/* COMBO STRIP — DB-driven. Combos without an `image_url` are auto-hidden
+          to avoid the "Chai + Bun Maska but a samosa photo" mismatch we had
+          when these tiles were hardcoded with stock photography. */}
+      {comboTiles.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 sm:px-8 py-12 grid md:grid-cols-3 gap-5" data-testid="combos-section">
+          {comboTiles.map((c) => (
+            <Link
+              to="/menu"
+              key={c.id}
+              data-testid={`combo-card-${c.id}`}
+              className="relative h-72 rounded-2xl overflow-hidden border border-chaioz-line group cursor-pointer"
+            >
+              <img src={c.image_url} alt={c.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-t from-chaioz-teal via-chaioz-teal/60 to-transparent" />
+              <div className="absolute bottom-0 inset-x-0 p-6">
+                <p className="text-xs uppercase tracking-widest text-chaioz-saffron mb-1">Combo</p>
+                <h3 className="font-serif text-2xl text-chaioz-cream">{c.name}</h3>
+                <p className="text-sm text-chaioz-cream/85 mt-1">{c.tagline}</p>
+                <span className="inline-block mt-3 bg-chaioz-saffron text-chaioz-teal text-sm font-medium px-3 py-1 rounded-full">
+                  {fmtAUD(c.bundle_price)}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </section>
+      )}
 
       {/* WHY CHAIOZ */}
       <section className="max-w-7xl mx-auto px-6 sm:px-8 py-24 grid md:grid-cols-2 gap-12 items-center" data-testid="why-chaioz">

@@ -36,6 +36,17 @@ async def create_order(
     from server import db
     if not payload.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
+
+    # Operational guard — when admin has flipped pickup_only on, refuse new
+    # delivery orders so customers don't book deliveries Uber Direct can't
+    # fulfil. Pickup orders pass through unchanged.
+    if payload.fulfillment == "delivery":
+        settings = await db.settings.find_one({"key": "global"}, {"_id": 0}) or {}
+        if settings.get("pickup_only"):
+            raise HTTPException(
+                status_code=400,
+                detail="Delivery is temporarily unavailable — please choose pickup.",
+            )
     # Coerce non-ISO literals like 'ASAP' to a real RFC3339 timestamp so every
     # downstream consumer (Square push, email formatter, DB) gets a consistent
     # value.

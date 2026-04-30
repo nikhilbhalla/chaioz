@@ -216,6 +216,7 @@ export default function Admin() {
           <TabsTrigger value="combos" data-testid="admin-tab-combos" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Combos</TabsTrigger>
           <TabsTrigger value="products" data-testid="admin-tab-products" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Products</TabsTrigger>
           <TabsTrigger value="broadcast" data-testid="admin-tab-broadcast" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Broadcast</TabsTrigger>
+          <TabsTrigger value="settings" data-testid="admin-tab-settings" className="data-[state=active]:bg-chaioz-saffron data-[state=active]:text-chaioz-teal">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orders" className="mt-6">
@@ -439,6 +440,10 @@ export default function Admin() {
         <TabsContent value="broadcast" className="mt-6">
           <BroadcastTab />
         </TabsContent>
+
+        <TabsContent value="settings" className="mt-6">
+          <SettingsTab />
+        </TabsContent>
       </Tabs>
 
       <MenuItemEditor
@@ -462,6 +467,82 @@ export default function Admin() {
         product={productEditing}
         onSaved={reload}
       />
+    </div>
+  );
+}
+
+function SettingsTab() {
+  const [s, setS] = useState({ pickup_only: false, soft_launch_banner: "" });
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    api.get("/admin/settings").then((r) => {
+      setS(r.data || s);
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const save = async (patch) => {
+    setBusy(true);
+    try {
+      const { data } = await api.put("/admin/settings", patch);
+      setS(data);
+      toast.success("Saved");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!loaded) return <div className="text-chaioz-teal/60">Loading...</div>;
+
+  return (
+    <div className="max-w-2xl space-y-5" data-testid="admin-settings">
+      <div className="border border-chaioz-line bg-white rounded-2xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex-1">
+            <h3 className="font-serif text-xl text-chaioz-teal">Pickup-only mode</h3>
+            <p className="text-xs text-chaioz-teal/60 mt-1">When ON, the website refuses new delivery orders and returns "Delivery temporarily unavailable" to the customer. Use this until Uber Direct integration is live or whenever you can't dispatch deliveries.</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={s.pickup_only}
+            disabled={busy}
+            data-testid="settings-pickup-only-toggle"
+            onClick={() => save({ pickup_only: !s.pickup_only })}
+            className={`relative w-12 h-7 rounded-full transition-colors flex-shrink-0 ${s.pickup_only ? "bg-chaioz-saffron" : "bg-chaioz-line"}`}
+          >
+            <span className={`absolute top-0.5 ${s.pickup_only ? "left-6" : "left-0.5"} w-6 h-6 bg-white rounded-full shadow-sm transition-all`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="border border-chaioz-line bg-white rounded-2xl p-6">
+        <h3 className="font-serif text-xl text-chaioz-teal">Soft-launch banner</h3>
+        <p className="text-xs text-chaioz-teal/60 mt-1">Saffron strip across the top of every page. Leave blank to hide. Customers can dismiss it per session.</p>
+        <textarea
+          value={s.soft_launch_banner}
+          onChange={(e) => setS({ ...s, soft_launch_banner: e.target.value })}
+          maxLength={280}
+          rows={2}
+          placeholder="e.g. We're in soft launch — if anything looks off, DM @chaioz"
+          data-testid="settings-banner-text"
+          className="mt-3 w-full rounded-xl bg-chaioz-cream border border-chaioz-line text-chaioz-teal p-3 text-sm focus:outline-none focus:ring-2 focus:ring-chaioz-saffron"
+        />
+        <p className="text-[11px] text-chaioz-teal/40 mt-1">{280 - s.soft_launch_banner.length} chars left</p>
+        <Button
+          onClick={() => save({ soft_launch_banner: s.soft_launch_banner })}
+          disabled={busy}
+          data-testid="settings-banner-save"
+          className="mt-3 rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal disabled:opacity-50"
+        >
+          {busy ? "Saving..." : "Save banner"}
+        </Button>
+      </div>
     </div>
   );
 }

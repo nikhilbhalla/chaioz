@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X, Plus, Check } from "lucide-react";
+import { X, Plus, Check, Upload, Loader2, ImageOff } from "lucide-react";
 import { api, fmtAUD } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -30,6 +30,7 @@ const emptyCombo = {
   bundle_price: "",
   badge: "",
   icon: "sparkles",
+  image_url: "",
   is_active: true,
   sort_order: 999,
 };
@@ -37,7 +38,9 @@ const emptyCombo = {
 export default function ComboEditor({ open, onClose, combo, onSaved, menuItems }) {
   const [form, setForm] = useState(emptyCombo);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [itemSearch, setItemSearch] = useState("");
+  const fileRef = useRef(null);
   const isEdit = !!combo;
 
   useEffect(() => {
@@ -63,6 +66,26 @@ export default function ComboEditor({ open, onClose, combo, onSaved, menuItems }
     setItemSearch("");
   };
   const removeItem = (name) => setForm((f) => ({ ...f, items: f.items.filter((i) => i !== name) }));
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const { data } = await api.post("/uploads/image", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const fullUrl = `${process.env.REACT_APP_BACKEND_URL}${data.url}`;
+      setForm((f) => ({ ...f, image_url: fullUrl }));
+      toast.success("Image uploaded");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const searchResults = useMemo(() => {
     if (!itemSearch) return [];
@@ -116,6 +139,43 @@ export default function ComboEditor({ open, onClose, combo, onSaved, menuItems }
             <div className="col-span-2">
               <Label className="text-chaioz-teal/80">Tagline</Label>
               <Input value={form.tagline || ""} onChange={set("tagline")} data-testid="combo-tagline" className="bg-chaioz-cream border-chaioz-line text-chaioz-teal mt-1" placeholder="e.g. Wrap + hashbrown + chai" />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-chaioz-teal/80">Combo image</Label>
+              <p className="text-[11px] text-chaioz-teal/55 mt-0.5">Square 1:1 works best. Without an image, this combo is hidden from the home page.</p>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="w-20 h-20 bg-chaioz-cream border border-chaioz-line rounded-xl overflow-hidden flex items-center justify-center" data-testid="combo-image-preview">
+                  {form.image_url ? (
+                    <img src={form.image_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageOff className="w-7 h-7 text-chaioz-teal/30" />
+                  )}
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} data-testid="combo-image-input" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  data-testid="combo-upload-btn"
+                  className="rounded-full border-chaioz-line bg-white text-chaioz-teal hover:text-chaioz-saffron"
+                >
+                  {uploading ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1" />}
+                  {uploading ? "Uploading..." : form.image_url ? "Replace" : "Upload image"}
+                </Button>
+                {form.image_url && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm((f) => ({ ...f, image_url: "" }))}
+                    data-testid="combo-image-remove"
+                    className="text-xs text-chaioz-teal/60 hover:text-red-500"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
             </div>
             <div>
               <Label className="text-chaioz-teal/80">Bundle price ($)</Label>

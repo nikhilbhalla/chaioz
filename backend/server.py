@@ -189,6 +189,7 @@ from routers.delivery import router as delivery_router  # noqa: E402
 from routers.webhooks import router as webhooks_router  # noqa: E402
 from routers.loyalty import router as loyalty_router  # noqa: E402
 from routers.devices import router as devices_router  # noqa: E402
+from routers.settings import router as settings_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(menu_router)
@@ -201,6 +202,7 @@ app.include_router(delivery_router)
 app.include_router(webhooks_router)
 app.include_router(loyalty_router)
 app.include_router(devices_router)
+app.include_router(settings_router)
 
 
 # ---------- Universal links: AASA (iOS) + assetlinks.json (Android) ----------
