@@ -29,6 +29,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Search, Truck, Sun, Moon, Sparkles } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import MenuItemEditor from "@/components/admin/MenuItemEditor";
 import ComboEditor from "@/components/admin/ComboEditor";
@@ -39,6 +40,7 @@ const STATUS = ["pending", "confirmed", "preparing", "ready", "completed", "canc
 export default function Admin() {
   const { user, loading } = useAuth();
   const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   const [items, setItems] = useState([]);
   const [products, setProducts] = useState([]);
@@ -52,13 +54,14 @@ export default function Admin() {
   const [q, setQ] = useState("");
 
   const reload = () => {
+    setStatsLoading(true);
     Promise.all([
       api.get("/admin/stats").then((r) => setStats(r.data)),
       api.get("/admin/orders").then((r) => setOrders(r.data)),
       api.get("/admin/menu").then((r) => setItems(r.data)),
       api.get("/admin/products").then((r) => setProducts(r.data)),
       api.get("/admin/combos").then((r) => setCombos(r.data)),
-    ]).catch(() => {});
+    ]).catch(() => {}).finally(() => setStatsLoading(false));
   };
 
   useEffect(() => {
@@ -114,24 +117,41 @@ export default function Admin() {
     <div className="pt-28 pb-20 max-w-7xl mx-auto px-6 sm:px-8" data-testid="admin-page">
       <h1 className="font-serif text-5xl text-chaioz-teal mb-8">Admin</h1>
 
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          {[
-            { label: "Today's revenue", value: fmtAUD(stats.today_revenue), icon: DollarSign, testid: "stat-today-rev" },
-            { label: "Today's orders", value: stats.today_orders, icon: ShoppingBag, testid: "stat-today-orders" },
-            { label: "Avg. order value (7d)", value: fmtAUD(stats.aov), icon: TrendingUp, testid: "stat-aov" },
-            { label: "Repeat customers", value: `${stats.repeat_customer_rate}%`, icon: Repeat, testid: "stat-repeat" },
-          ].map((s, i) => (
-            <div key={i} data-testid={s.testid} className="border border-chaioz-line bg-white rounded-2xl p-5">
-              <s.icon className="w-5 h-5 text-chaioz-saffron mb-2" />
-              <p className="text-2xl text-chaioz-teal font-medium">{s.value}</p>
-              <p className="text-xs text-chaioz-teal/60 mt-1 uppercase tracking-wider">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        {statsLoading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="border border-chaioz-line bg-white rounded-2xl p-5 space-y-2">
+                <Skeleton className="h-5 w-5 rounded" />
+                <Skeleton className="h-7 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            ))
+          : stats && [
+              { label: "Today's revenue", value: fmtAUD(stats.today_revenue), icon: DollarSign, testid: "stat-today-rev" },
+              { label: "Today's orders", value: stats.today_orders, icon: ShoppingBag, testid: "stat-today-orders" },
+              { label: "Avg. order value (7d)", value: fmtAUD(stats.aov), icon: TrendingUp, testid: "stat-aov" },
+              { label: "Repeat customers", value: `${stats.repeat_customer_rate}%`, icon: Repeat, testid: "stat-repeat" },
+            ].map((s, i) => (
+              <div key={i} data-testid={s.testid} className="border border-chaioz-line bg-white rounded-2xl p-5">
+                <s.icon className="w-5 h-5 text-chaioz-saffron mb-2" />
+                <p className="text-2xl text-chaioz-teal font-medium">{s.value}</p>
+                <p className="text-xs text-chaioz-teal/60 mt-1 uppercase tracking-wider">{s.label}</p>
+              </div>
+            ))}
+      </div>
 
-      {stats?.daily_revenue_14d && (
+      {statsLoading ? (
+        <div className="grid lg:grid-cols-[2fr_1fr] gap-5 mb-10">
+          <div className="border border-chaioz-line bg-white rounded-2xl p-6">
+            <Skeleton className="h-7 w-56 mb-4" />
+            <Skeleton className="h-64 w-full rounded-xl" />
+          </div>
+          <div className="border border-chaioz-line bg-white rounded-2xl p-6">
+            <Skeleton className="h-7 w-40 mb-4" />
+            <Skeleton className="h-44 w-full rounded-xl" />
+          </div>
+        </div>
+      ) : stats?.daily_revenue_14d && (
         <div className="grid lg:grid-cols-[2fr_1fr] gap-5 mb-10">
           <div className="border border-chaioz-line bg-white rounded-2xl p-6" data-testid="revenue-chart">
             <h3 className="font-serif text-2xl text-chaioz-teal mb-4">Daily revenue (last 14 days)</h3>
@@ -193,7 +213,12 @@ export default function Admin() {
         </div>
       )}
 
-      {stats?.hourly_revenue_today && (
+      {statsLoading ? (
+        <div className="border border-chaioz-line bg-white rounded-2xl p-6 mb-10">
+          <Skeleton className="h-7 w-52 mb-4" />
+          <Skeleton className="h-56 w-full rounded-xl" />
+        </div>
+      ) : stats?.hourly_revenue_today && (
         <div className="border border-chaioz-line bg-white rounded-2xl p-6 mb-10" data-testid="hourly-revenue">
           <h3 className="font-serif text-2xl text-chaioz-teal mb-4">Revenue by hour (today)</h3>
           <div className="h-56">

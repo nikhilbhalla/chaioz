@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, Response, Request, Depends
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Literal, Optional
 from pydantic import BaseModel, EmailStr, Field
 import uuid
+import os
+import secrets
 
 from models import RegisterRequest, LoginRequest, UserPublic
 from auth_utils import (
@@ -279,3 +281,118 @@ async def signup_resend(payload: SignupResendRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return result
+
+
+# ---------- Forgot / reset password ------------------------------------------------
+
+RESET_TTL_MINUTES = 30
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+def _reset_email_html(name: str, reset_url: str) -> str:
+    return f"""
+<div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:480px;margin:auto;background:#0F4C4A;color:#FDFBF7;padding:36px 28px;border-radius:18px">
+  <h1 style="font-family:Georgia,serif;color:#E8A84A;margin:0 0 12px;font-size:26px">Reset your password</h1>
+  <p style="color:rgba(253,251,247,0.85);margin:0 0 24px;line-height:1.6">Hi {name or 'there'} — click the button below to choose a new password. This link expires in {RESET_TTL_MINUTES} minutes.</p>
+  <div style="text-align:center;margin:24px 0">
+    <a href="{reset_url}" style="background:#E8A84A;color:#0F4C4A;text-decoration:none;padding:14px 32px;border-radius:999px;font-weight:700;display:inline-block">Reset password →</a>
+  </div>
+  <p style="color:rgba(253,251,247,0.6);font-size:12px;margin:18px 0 0;text-align:center">If you didn't request this, you can safely ignore this email.</p>
+  <p style="color:rgba(253,251,247,0.45);font-size:11px;text-align:center;margin:24px 0 0">Chaioz · Unit 2, 132 O'Connell St, North Adelaide</p>
+</div>"""
+
+
+@router.post("/forgot-password")
+async def forgot_password(payload: ForgotPasswordRequest):
+    """Send a password-reset link to the user's email address.
+
+    Always returns 200 regardless of whether the email exists — prevents
+    account enumeration attacks."""
+    from server import db
+    from services.notifications import send_email
+
+    email = payload.email.lower().strip()
+    user = await db.users.find_one({"email": email})
+
+    # Return early without sending if user not found, but don't reveal this.
+    if not user:
+        return {"ok": True}
+
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=RESET_TTL_MINUTES)
+
+    # One active reset per user — invalidate any previous.
+    await db.password_resets.delete_many({"user_id": user["id"]})
+    await db.password_resets.insert_one({
+        "token_hash": hash_password(token),
+        "user_id": user["id"],
+        "email": email,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "used": False,
+    })
+
+    frontend_origin = os.environ.get("FRONTEND_ORIGIN", "https://chaioz.com.au")
+    reset_url = f"{frontend_origin}/reset-password?token={token}"
+    html = _reset_email_html(name=user.get("name", ""), reset_url=reset_url)
+    await send_email(email, "Reset your Chaioz password", html)
+
+    return {"ok": True}
+
+
+@router.post("/reset-password")
+async def reset_password(payload: ResetPasswordRequest, response: Response):
+    """Validate the reset token and update the user's password."""
+    from server import db
+    import re
+
+    # Enforce the same password rules as signup / change-password.
+    if not re.match(r"^(?=.*[A-Za-z])(?=.*\d).{8,}$", payload.new_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be 8+ chars with at least one letter and one digit",
+        )
+
+    # Find non-expired, unused reset docs and check against each hash.
+    now = datetime.now(timezone.utc)
+    candidates = await db.password_resets.find({"used": False}).to_list(length=20)
+    matched_doc = None
+    for doc in candidates:
+        expires_at = datetime.fromisoformat(doc["expires_at"])
+        if now >= expires_at:
+            continue
+        if verify_password(payload.token, doc["token_hash"]):
+            matched_doc = doc
+            break
+
+    if not matched_doc:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired")
+
+    user = await db.users.find_one({"id": matched_doc["user_id"]})
+    if not user:
+        raise HTTPException(status_code=400, detail="Account not found")
+
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {
+            "password_hash": hash_password(payload.new_password),
+            "password_changed_at": now.isoformat(),
+        }},
+    )
+    await db.password_resets.update_one(
+        {"_id": matched_doc["_id"]},
+        {"$set": {"used": True}},
+    )
+
+    # Issue a fresh session cookie so the user is logged in immediately.
+    token_jwt = create_access_token(user["id"], user["email"], user.get("role", "customer"))
+    _set_cookie(response, token_jwt)
+    return {"ok": True}

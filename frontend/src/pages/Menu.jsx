@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import MenuItemCard from "@/components/MenuItemCard";
 import ItemCustomizeDialog from "@/components/ItemCustomizeDialog";
 import { Search, Zap, DollarSign, Clock, Leaf, Moon, Candy, Utensils, X } from "lucide-react";
@@ -22,6 +23,7 @@ export default function MenuPage() {
   const [params] = useSearchParams();
   const [cats, setCats] = useState([]);
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [active, setActive] = useState("");
   const [q, setQ] = useState("");
   const [activeTags, setActiveTags] = useState(new Set());
@@ -30,14 +32,18 @@ export default function MenuPage() {
   const { isMorning } = useDayMode();
 
   useEffect(() => {
-    api.get("/menu/categories").then((r) => {
-      setCats(r.data || []);
-      // Default category based on time of day
-      const preferred = isMorning ? "Breakfast" : (r.data?.[0]?.name || "");
-      const hasPreferred = (r.data || []).some((c) => c.name === preferred);
-      setActive(hasPreferred ? preferred : (r.data?.[0]?.name || ""));
-    });
-    api.get("/menu/items").then((r) => setItems(r.data || []));
+    setLoading(true);
+    Promise.all([
+      api.get("/menu/categories"),
+      api.get("/menu/items"),
+    ]).then(([catsRes, itemsRes]) => {
+      const catList = catsRes.data || [];
+      setCats(catList);
+      setItems(itemsRes.data || []);
+      const preferred = isMorning ? "Breakfast" : (catList[0]?.name || "");
+      const hasPreferred = catList.some((c) => c.name === preferred);
+      setActive(hasPreferred ? preferred : (catList[0]?.name || ""));
+    }).finally(() => setLoading(false));
     // Accept ?tag= from deep links (e.g. "Order Breakfast" CTA)
     const initial = params.get("tag");
     if (initial) setActiveTags(new Set(initial.split(",")));
@@ -148,39 +154,67 @@ export default function MenuPage() {
       <div className="grid lg:grid-cols-[220px_1fr] gap-10">
         <aside className="lg:sticky lg:top-28 self-start">
           <div className="overflow-x-auto lg:overflow-visible no-scrollbar">
-            <ul className="flex lg:flex-col gap-2">
-              {cats.map((c) => (
-                <li key={c.name}>
-                  <button
-                    onClick={() => setActive(c.name)}
-                    data-testid={`cat-${c.name.replace(/\s/g, "-").toLowerCase()}`}
-                    className={`whitespace-nowrap text-sm tracking-wide uppercase px-4 py-2 rounded-full transition-colors lg:w-full lg:text-left ${
-                      active === c.name
-                        ? "bg-chaioz-saffron text-chaioz-teal"
-                        : "text-chaioz-teal/70 hover:text-chaioz-saffron border border-chaioz-line lg:border-transparent"
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {loading ? (
+              <ul className="flex lg:flex-col gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <li key={i}><Skeleton className="h-9 w-28 lg:w-full rounded-full" /></li>
+                ))}
+              </ul>
+            ) : (
+              <ul className="flex lg:flex-col gap-2">
+                {cats.map((c) => (
+                  <li key={c.name}>
+                    <button
+                      onClick={() => setActive(c.name)}
+                      data-testid={`cat-${c.name.replace(/\s/g, "-").toLowerCase()}`}
+                      className={`whitespace-nowrap text-sm tracking-wide uppercase px-4 py-2 rounded-full transition-colors lg:w-full lg:text-left ${
+                        active === c.name
+                          ? "bg-chaioz-saffron text-chaioz-teal"
+                          : "text-chaioz-teal/70 hover:text-chaioz-saffron border border-chaioz-line lg:border-transparent"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </aside>
 
         <div className="space-y-12">
-          {Object.entries(grouped).map(([sub, list]) => (
-            <div key={sub}>
-              <h2 className="font-serif text-2xl text-chaioz-teal mb-5 border-b border-chaioz-line pb-2">{sub}</h2>
+          {loading ? (
+            <div>
+              <Skeleton className="h-8 w-40 mb-5" />
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {list.map((it) => (
-                  <MenuItemCard key={it.id} item={it} onAdd={onAdd} />
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-2xl border border-chaioz-line overflow-hidden">
+                    <Skeleton className="h-44 w-full" />
+                    <div className="p-4 space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
-          ))}
-          {filtered.length === 0 && (
-            <p className="text-chaioz-teal/60 text-sm" data-testid="menu-empty">No items match your search.</p>
+          ) : (
+            <>
+              {Object.entries(grouped).map(([sub, list]) => (
+                <div key={sub}>
+                  <h2 className="font-serif text-2xl text-chaioz-teal mb-5 border-b border-chaioz-line pb-2">{sub}</h2>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {list.map((it) => (
+                      <MenuItemCard key={it.id} item={it} onAdd={onAdd} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <p className="text-chaioz-teal/60 text-sm" data-testid="menu-empty">No items match your search.</p>
+              )}
+            </>
           )}
         </div>
       </div>
