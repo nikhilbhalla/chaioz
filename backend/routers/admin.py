@@ -560,3 +560,79 @@ async def email_test(payload: dict, _: dict = Depends(get_current_admin)):
     </div>"""
     result = await send_email(to, "Chaioz delivery test", html)
     return result
+
+
+# ---------- Square POS diagnostics ---------------------------------------------
+@router.get("/square/status")
+async def square_status(_: dict = Depends(get_current_admin)):
+    """Surface the current Square config + a live connectivity check so the
+    operator can confirm orders are flowing into the correct Square account
+    (sandbox vs production) and to the right location."""
+    import os
+    from services.square_pos import _get_client, SQUARE_ENVIRONMENT, SQUARE_LOCATION_ID, is_configured
+
+    app_id = os.environ.get("SQUARE_APPLICATION_ID", "")
+    token = os.environ.get("SQUARE_ACCESS_TOKEN", "")
+    # App IDs carry the env prefix — "sandbox-sq0idb-" vs "sq0idp-".
+    app_id_suggests_sandbox = app_id.startswith("sandbox-")
+    app_id_suggests_production = bool(app_id) and not app_id_suggests_sandbox
+    env_mismatch = (
+        (SQUARE_ENVIRONMENT == "production" and app_id_suggests_sandbox)
+        or (SQUARE_ENVIRONMENT == "sandbox" and app_id_suggests_production)
+    )
+
+    status = {
+        "configured": is_configured(),
+        "environment": SQUARE_ENVIRONMENT,
+        "location_id": SQUARE_LOCATION_ID or None,
+        "application_id_prefix": app_id[:24] + "…" if app_id else None,
+        "access_token_present": bool(token),
+        "env_mismatch": env_mismatch,
+        "connectivity": None,
+        "location_name": None,
+        "error": None,
+    }
+
+    client = _get_client()
+    if client and SQUARE_LOCATION_ID:
+        try:
+            import asyncio as _asyncio
+            def _call():
+                return client.locations.get(location_id=SQUARE_LOCATION_ID)
+            resp = await _asyncio.to_thread(_call)
+            loc = getattr(resp, "location", None) or (resp.get("location") if isinstance(resp, dict) else None)
+            if loc:
+                status["connectivity"] = "ok"
+                status["location_name"] = getattr(loc, "name", None) or (loc.get("name") if isinstance(loc, dict) else None)
+            else:
+                status["connectivity"] = "error"
+                status["error"] = "No location returned"
+        except Exception as e:
+            from services.square_pos import _serialize_square_error
+            status["connectivity"] = "error"
+            status["error"] = _serialize_square_error(e)
+    elif not client:
+        status["connectivity"] = "error"
+        status["error"] = "Square client could not be initialised — check access token"
+
+    return status
+
+
+@router.post("/square/resync/{order_id}")
+async def square_resync_order(order_id: str, _: dict = Depends(get_current_admin)):
+    """Manually push (or re-push) a local order into Square. Useful when the
+    first background sync failed — e.g. env mismatch at order-creation time."""
+    from server import db
+    from services.square_pos import sync_order_async
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    await sync_order_async(order_id, order)
+    fresh = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    return {
+        "ok": bool(fresh.get("square_order_id")),
+        "square_order_id": fresh.get("square_order_id"),
+        "square_sync_error": fresh.get("square_sync_error"),
+        "square_payment_status": fresh.get("square_payment_status"),
+    }
+

@@ -167,6 +167,13 @@ UBER_WEBHOOK_SIGNING_KEY=
 - Admin: `chaiozadl@gmail.com` / `Chaioz@2026` (rotated 2026-04-30 — old `admin@chaioz.com.au` deleted)
 - Mobile-flow test account: registers dynamically per test run
 
+### 2026-04-30 — Iteration 16 (Square POS diagnostics + production-safe payment flow)
+- **Production-safe Square payment flow**: `create_sandbox_payment()` now short-circuits with `{skipped: true}` whenever `SQUARE_ENVIRONMENT != "sandbox"`. The sandbox test nonce `cnon:card-nonce-ok` is rejected by Square production and was blowing up the sync pipeline. In production the order still gets pushed to Square (staff can see it on the tablet/KDS); the order doc records `square_payment_status: "awaiting_pos"` so the Admin UI can show "Pay on tablet".
+- **Square diagnostics endpoint**: `GET /api/admin/square/status` returns the active environment, location ID+name (from a live `locations.get` call), access-token presence, and detects env/app-ID mismatches (e.g. `SQUARE_ENVIRONMENT=production` with a sandbox App ID). Clear "Running in sandbox" / "Env mismatch" banners in the UI.
+- **Square resync endpoint**: `POST /api/admin/square/resync/{order_id}` — manually re-push an order that failed. Used by a small Retry button on any failed row in the `/admin → Orders` table.
+- **Orders table UI**: new `Square` column showing Synced / Pending / Sync-failed with a one-click Retry. Paid/Pay-on-tablet indicator shown on synced rows.
+- **Admin Settings**: Square status card now sits above the Email delivery card in the Settings tab.
+
 ### 2026-04-30 — Iteration 15 (admin user CRUD + email diagnostics)
 - **Admin User Management** (`/admin → Users` tab):
   - Backend: `GET /api/admin/users?q=&role=&limit=&skip=` (search + paginate), `POST /api/admin/users` (create without OTP), `PATCH /api/admin/users/{id}` (name/phone/role/loyalty_points/marketing), `POST /api/admin/users/{id}/reset-password` (force-set), `DELETE /api/admin/users/{id}`. Self-demote and self-delete are blocked server-side.

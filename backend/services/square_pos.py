@@ -177,7 +177,13 @@ async def push_order_to_square(order: dict) -> dict:
 
 
 async def create_sandbox_payment(square_order_id: str, total_aud: float) -> dict:
-    """Mark the order as paid in Square sandbox (uses test nonce)."""
+    """Mark the order as paid in Square sandbox (uses test nonce).
+
+    ONLY safe in sandbox — the test nonce `cnon:card-nonce-ok` is rejected by
+    Square production. In production we skip auto-payment entirely; staff
+    complete the payment on the café's Square tablet at pickup."""
+    if SQUARE_ENVIRONMENT != "sandbox":
+        return {"success": False, "skipped": True, "error": "production — staff completes payment on tablet"}
     client = _get_client()
     if not client or not square_order_id:
         return {"success": False, "error": "no client / order"}
@@ -218,6 +224,9 @@ async def sync_order_async(order_id: str, order_doc: dict, max_retries: int = 3)
                 pay = await create_sandbox_payment(res["square_order_id"], order_doc.get("total", 0))
                 if pay.get("success"):
                     update["square_payment_id"] = pay.get("payment_id")
+                elif pay.get("skipped"):
+                    # Production — staff will tap through payment on the tablet.
+                    update["square_payment_status"] = "awaiting_pos"
                 else:
                     update["square_payment_error"] = str(pay.get("error"))[:500]
             await db.orders.update_one({"id": order_id}, {"$set": update})

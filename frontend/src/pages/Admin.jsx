@@ -28,13 +28,14 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Search, Truck, Sun, Moon, Sparkles } from "lucide-react";
+import { TrendingUp, ShoppingBag, Repeat, DollarSign, Plus, Pencil, Trash2, Search, Truck, Sun, Moon, Sparkles, CheckCircle2, XCircle, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import MenuItemEditor from "@/components/admin/MenuItemEditor";
 import ComboEditor from "@/components/admin/ComboEditor";
 import ProductEditor from "@/components/admin/ProductEditor";
 import UsersTab from "@/components/admin/UsersTab";
 import EmailDeliveryCard from "@/components/admin/EmailDeliveryCard";
+import SquareStatusCard from "@/components/admin/SquareStatusCard";
 
 const STATUS = ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"];
 
@@ -233,6 +234,7 @@ export default function Admin() {
                   <th className="text-left p-4">Customer</th>
                   <th className="text-left p-4">Fulfilment</th>
                   <th className="text-left p-4">Total</th>
+                  <th className="text-left p-4">Square</th>
                   <th className="text-left p-4">Status</th>
                 </tr>
               </thead>
@@ -255,6 +257,9 @@ export default function Admin() {
                     </td>
                     <td className="p-4 text-chaioz-saffron">{fmtAUD(o.total)}</td>
                     <td className="p-4">
+                      <SquareSyncCell order={o} onResynced={reload} />
+                    </td>
+                    <td className="p-4">
                       <Select value={o.status} onValueChange={(v) => updateStatus(o.id, v)}>
                         <SelectTrigger className="bg-chaioz-cream border-chaioz-line text-chaioz-teal w-36 h-9" data-testid={`order-status-${o.id}`}>
                           <SelectValue />
@@ -267,7 +272,7 @@ export default function Admin() {
                   </tr>
                 ))}
                 {orders.length === 0 && (
-                  <tr><td colSpan="5" className="p-10 text-center text-chaioz-teal/60">No orders yet.</td></tr>
+                  <tr><td colSpan="6" className="p-10 text-center text-chaioz-teal/60">No orders yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -514,6 +519,7 @@ function SettingsTab() {
 
   return (
     <div className="max-w-2xl space-y-5" data-testid="admin-settings">
+      <SquareStatusCard />
       <EmailDeliveryCard />
 
       <div className="border border-chaioz-line bg-white rounded-2xl p-6">
@@ -795,6 +801,58 @@ function AccountTab({ user }) {
           {busy ? "Updating..." : "Update password"}
         </Button>
       </form>
+    </div>
+  );
+}
+
+
+function SquareSyncCell({ order, onResynced }) {
+  const [busy, setBusy] = useState(false);
+  const synced = !!order.square_order_id;
+  const hasError = !synced && order.square_sync_error;
+
+  const resync = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Re-push order #${order.short_code} to Square?`)) return;
+    setBusy(true);
+    try {
+      const { data } = await api.post(`/admin/square/resync/${order.id}`);
+      if (data.ok) toast.success(`Order #${order.short_code} synced to Square`);
+      else toast.error(data.square_sync_error || "Resync failed");
+      onResynced?.();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Resync failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (synced) {
+    return (
+      <div className="flex flex-col gap-0.5" data-testid={`order-square-${order.id}`}>
+        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-medium">
+          <CheckCircle2 className="w-3 h-3" /> Synced
+        </span>
+        {order.square_payment_id && <span className="text-[10px] text-chaioz-teal/50">Paid</span>}
+        {order.square_payment_status === "awaiting_pos" && <span className="text-[10px] text-chaioz-teal/50">Pay on tablet</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-1 items-start" data-testid={`order-square-${order.id}`}>
+      <span className="inline-flex items-center gap-1 text-[11px] text-red-500 font-medium" title={order.square_sync_error || ""}>
+        <XCircle className="w-3 h-3" /> {hasError ? "Sync failed" : "Pending"}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={resync}
+        disabled={busy}
+        data-testid={`order-square-resync-${order.id}`}
+        className="h-6 px-2 text-[10px] bg-white"
+      >
+        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : (<><RefreshCw className="w-3 h-3 mr-1" /> Retry</>)}
+      </Button>
     </div>
   );
 }
