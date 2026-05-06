@@ -64,9 +64,7 @@
     },
     "extra": {
       "apiBaseUrl": "https://chaioz.com.au",
-      "eas": {
-        "projectId": "REPLACE_AFTER_FIRST_EAS_INIT"
-      }
+      "eas": {}
     }
   }
 }
