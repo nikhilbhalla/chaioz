@@ -6,7 +6,9 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "chaioz",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -35,10 +37,19 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "chaioz.com.au" },
-            { "scheme": "https", "host": "www.chaioz.com.au" }
+            {
+              "scheme": "https",
+              "host": "chaioz.com.au"
+            },
+            {
+              "scheme": "https",
+              "host": "www.chaioz.com.au"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -65,7 +76,7 @@
     "extra": {
       "apiBaseUrl": "https://chaioz.com.au",
       "eas": {
-        "projectId": "REPLACE_AFTER_FIRST_EAS_INIT"
+        "projectId": "auto"
       }
     }
   }
