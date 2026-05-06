@@ -26,9 +26,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "REPLACE_WITH_APPLE_ID@chaioz.com.au",
+        "appleId": "nikhil_bhalla@hotmail.com",
         "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID"
+        "appleTeamId": "59J2E67YR9"
       },
       "android": {
         "serviceAccountKeyPath": "./play-service-account.json",
