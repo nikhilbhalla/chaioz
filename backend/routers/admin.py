@@ -636,3 +636,58 @@ async def square_resync_order(order_id: str, _: dict = Depends(get_current_admin
         "square_payment_status": fresh.get("square_payment_status"),
     }
 
+
+@router.post("/square/test-order")
+async def square_test_order(_: dict = Depends(get_current_admin)):
+    """End-to-end test: actually creates a tiny order in Square and reports
+    success/failure verbatim. This is the source-of-truth check — the regular
+    /status endpoint only verifies the connection, not that orders.create works
+    (which can fail independently due to permissions, location config, etc.)."""
+    from services.square_pos import push_order_to_square, is_configured
+    import uuid as _uuid
+    if not is_configured():
+        raise HTTPException(status_code=400, detail="Square is not configured (token + location_id required)")
+
+    short_code = f"TEST{_uuid.uuid4().hex[:4].upper()}"
+    fake_order = {
+        "id": str(_uuid.uuid4()),
+        "short_code": short_code,
+        "items": [{
+            "name": "[TEST — please void] Chaioz integration check",
+            "qty": 1,
+            "price": 0.01,
+            "notes": "Automated test order from Chaioz admin panel — safe to void.",
+        }],
+        "fulfillment": "pickup",
+        "pickup_time": "",  # Falls back to now + 15 min
+        "customer_name": "Chaioz Admin Test",
+        "customer_phone": "0412345678",
+        "notes": f"INTEGRATION TEST — short_code {short_code}. Safe to void.",
+    }
+    result = await push_order_to_square(fake_order)
+    return {
+        "ok": bool(result.get("success")),
+        "square_order_id": result.get("square_order_id"),
+        "error": result.get("error"),
+        "test_short_code": short_code,
+        "hint": (
+            f"Look in Square Dashboard → Orders for an order tagged '{short_code}' or "
+            "'[TEST — please void]'. Void/cancel it after verifying."
+        ) if result.get("success") else None,
+    }
+
+
+@router.get("/square/recent-failures")
+async def square_recent_failures(limit: int = 20, _: dict = Depends(get_current_admin)):
+    """Surface the most recent orders that failed to sync to Square, with the
+    full error message. Most useful diagnostic when a customer says 'my order
+    didn't reach the kitchen'."""
+    from server import db
+    cursor = db.orders.find(
+        {"square_sync_error": {"$exists": True, "$nin": [None, ""]}},
+        {"_id": 0, "id": 1, "short_code": 1, "created_at": 1, "customer_name": 1,
+         "total": 1, "fulfillment": 1, "square_sync_error": 1, "square_order_id": 1},
+    ).sort("created_at", -1).limit(min(max(1, limit), 100))
+    items = await cursor.to_list(limit)
+    return {"count": len(items), "items": items}
+

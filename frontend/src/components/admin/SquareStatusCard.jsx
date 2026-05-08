@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, AlertTriangle, XCircle, Loader2, RefreshCw } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, RefreshCw, Send, FileWarning } from "lucide-react";
 
 /** Shows the live Square config + connectivity check so the operator can see
  *  whether orders are flowing into the correct Square account & location. */
 export default function SquareStatusCard() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  const [failures, setFailures] = useState(null);
+  const [loadingFailures, setLoadingFailures] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -18,6 +22,31 @@ export default function SquareStatusCard() {
       setStatus(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runEndToEndTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const { data } = await api.post("/admin/square/test-order");
+      setTestResult(data);
+    } catch (e) {
+      setTestResult({ ok: false, error: e.response?.data?.detail || "Request failed" });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const loadFailures = async () => {
+    setLoadingFailures(true);
+    try {
+      const { data } = await api.get("/admin/square/recent-failures?limit=10");
+      setFailures(data);
+    } catch (_) {
+      setFailures({ count: 0, items: [] });
+    } finally {
+      setLoadingFailures(false);
     }
   };
 
@@ -114,9 +143,83 @@ export default function SquareStatusCard() {
 
           {!hasProblem && (
             <p className="text-xs text-emerald-700 mt-4">
-              ✓ Ready — new orders are being pushed to <strong>{status.location_name}</strong>.
+              ✓ Connection healthy — orders are being pushed to <strong>{status.location_name}</strong>.
             </p>
           )}
+
+          {/* End-to-end test — far more reliable than the basic ping above.
+              Actually creates a tiny test order in Square so failures that only
+              surface at orders.create time (permissions, location config, bad
+              fulfillment fields) are exposed verbatim. */}
+          <div className="mt-5 pt-5 border-t border-chaioz-line">
+            <h4 className="text-sm font-semibold text-chaioz-teal flex items-center gap-1.5">
+              <Send className="w-3.5 h-3.5 text-chaioz-saffron" />
+              End-to-end test
+            </h4>
+            <p className="text-[11px] text-chaioz-teal/60 mt-1">
+              Creates a real $0.01 test order in your Square account, tagged "TEST — please void". Confirms orders are <em>actually</em> reaching Square (not just that the connection works). Void it from Square Dashboard after.
+            </p>
+            <Button
+              onClick={runEndToEndTest}
+              disabled={testing}
+              data-testid="square-test-order"
+              className="mt-2 rounded-full bg-chaioz-saffron text-chaioz-teal hover:bg-chaioz-saffronHover hover:text-chaioz-teal h-8 px-4 text-xs"
+            >
+              {testing ? (<><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Pushing test order…</>) : (<><Send className="w-3 h-3 mr-1" /> Send test order to Square</>)}
+            </Button>
+
+            {testResult && testResult.ok && (
+              <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3" data-testid="square-test-success">
+                <p className="text-xs font-semibold text-emerald-900">✓ Test order created in Square</p>
+                <p className="text-[11px] text-emerald-900 mt-1">{testResult.hint}</p>
+                <p className="text-[10px] text-emerald-800/70 mt-2 font-mono break-all">Square order ID: {testResult.square_order_id}</p>
+              </div>
+            )}
+            {testResult && !testResult.ok && (
+              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3" data-testid="square-test-error">
+                <p className="text-xs font-semibold text-red-900">✕ Test order rejected by Square</p>
+                <p className="text-[11px] text-red-900 mt-1">This is the exact reason real customer orders aren't reaching your tablet:</p>
+                <pre className="mt-2 text-[10px] text-red-900 font-mono whitespace-pre-wrap break-all bg-white/60 rounded p-2 max-h-40 overflow-auto">{testResult.error}</pre>
+              </div>
+            )}
+          </div>
+
+          {/* Recent sync failures — for digging into past customer orders that
+              didn't reach Square. */}
+          <div className="mt-5 pt-5 border-t border-chaioz-line">
+            <h4 className="text-sm font-semibold text-chaioz-teal flex items-center gap-1.5">
+              <FileWarning className="w-3.5 h-3.5 text-amber-500" />
+              Recent sync failures
+            </h4>
+            <Button
+              variant="outline"
+              onClick={loadFailures}
+              disabled={loadingFailures}
+              data-testid="square-load-failures"
+              className="mt-2 bg-white h-8 px-3 text-xs"
+            >
+              {loadingFailures ? <Loader2 className="w-3 h-3 animate-spin" /> : "Show recent failures"}
+            </Button>
+
+            {failures && (
+              failures.count === 0 ? (
+                <p className="text-[11px] text-emerald-700 mt-2" data-testid="square-no-failures">No failed orders found 🎉</p>
+              ) : (
+                <div className="mt-3 space-y-2" data-testid="square-failures-list">
+                  {failures.items.map((o) => (
+                    <div key={o.id} className="bg-amber-50 border border-amber-200 rounded p-2.5">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-mono font-semibold text-amber-900">#{o.short_code}</span>
+                        <span className="text-amber-700">{(o.created_at || "").slice(0, 16).replace("T", " ")}</span>
+                      </div>
+                      <p className="text-[11px] text-amber-900 mt-1">{o.customer_name} • ${o.total?.toFixed(2)} • {o.fulfillment}</p>
+                      <pre className="text-[10px] text-amber-900/80 font-mono mt-1 whitespace-pre-wrap break-all">{o.square_sync_error}</pre>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
         </div>
       </div>
     </div>

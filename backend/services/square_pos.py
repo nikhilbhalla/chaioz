@@ -79,17 +79,56 @@ def _ensure_rfc3339(ts: str, fallback_minutes: int = 15) -> str:
 
 
 def _serialize_square_error(e: Exception) -> str:
-    """Square SDK v44 ApiError exposes `.body` (dict) + `.status_code`. Prefer
-    that over str(e) which dumps headers first and gets truncated before the
-    actual error payload."""
+    """Square SDK v44+ raises ApiError with `.body`, `.status_code`, `.headers`.
+
+    `body` is the most useful payload — contains `errors: [{detail, category, code}]`.
+    Fall back through several attribute names so we never get stuck on a useless
+    `headers: {...}` dump truncated to 2000 chars (which was hiding real failures).
+    """
+    import json as _json
+
+    # Preferred: parsed JSON body. SDK can return it as dict OR as a JSON string
+    # depending on the error path that triggered it.
     body = getattr(e, "body", None)
-    status = getattr(e, "status_code", None)
     if body is not None:
-        try:
-            import json as _json
-            return f"{status} {_json.dumps(body)}"[:2000]
-        except Exception:
-            return f"{status} {body}"[:2000]
+        if isinstance(body, (bytes, bytearray)):
+            try:
+                body = body.decode("utf-8", errors="replace")
+            except Exception:
+                pass
+        if isinstance(body, str):
+            try:
+                body = _json.loads(body)
+            except Exception:
+                # Not JSON — return raw string truncated.
+                return body[:2000]
+        if isinstance(body, dict):
+            errors = body.get("errors") or []
+            if errors:
+                # Concatenate every error: "<category>/<code>: <detail>"
+                parts = []
+                for err in errors:
+                    cat = err.get("category", "?")
+                    code = err.get("code", "?")
+                    detail = err.get("detail", "no detail")
+                    field = err.get("field", "")
+                    field_str = f" (field={field})" if field else ""
+                    parts.append(f"[{cat}/{code}]{field_str} {detail}")
+                return " | ".join(parts)[:2000]
+            try:
+                return _json.dumps(body)[:2000]
+            except Exception:
+                return str(body)[:2000]
+
+    # Fallbacks for older SDKs / unexpected error shapes.
+    for attr in ("message", "errors", "args"):
+        val = getattr(e, attr, None)
+        if val:
+            try:
+                return _json.dumps(val)[:2000]
+            except Exception:
+                return str(val)[:2000]
+
     return str(e)[:2000]
 
 
