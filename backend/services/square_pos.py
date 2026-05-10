@@ -79,17 +79,53 @@ def _ensure_rfc3339(ts: str, fallback_minutes: int = 15) -> str:
 
 
 def _serialize_square_error(e: Exception) -> str:
-    """Square SDK v44 ApiError exposes `.body` (dict) + `.status_code`. Prefer
-    that over str(e) which dumps headers first and gets truncated before the
-    actual error payload."""
+    """Square SDK v44 ApiError exposes `.body` (dict/bytes/str) + `.status_code`.
+
+    Produces structured messages like:
+      [INVALID_REQUEST_ERROR/MISSING_REQUIRED_FIELD] (field=location_id) Missing required field.
+
+    This is far easier to action than a raw JSON dump and avoids the header-first
+    truncation issue of str(e)."""
+    import json as _json
     body = getattr(e, "body", None)
-    status = getattr(e, "status_code", None)
     if body is not None:
-        try:
-            import json as _json
-            return f"{status} {_json.dumps(body)}"[:2000]
-        except Exception:
-            return f"{status} {body}"[:2000]
+        # bytes → str
+        if isinstance(body, (bytes, bytearray)):
+            try:
+                body = body.decode("utf-8", errors="replace")
+            except Exception:
+                pass
+        # str → dict
+        if isinstance(body, str):
+            try:
+                body = _json.loads(body)
+            except Exception:
+                return body[:2000]
+        # dict → structured error list
+        if isinstance(body, dict):
+            errors = body.get("errors") or []
+            if errors:
+                parts = []
+                for err in errors:
+                    cat = err.get("category", "?")
+                    code = err.get("code", "?")
+                    detail = err.get("detail", "no detail")
+                    field = err.get("field", "")
+                    field_str = f" (field={field})" if field else ""
+                    parts.append(f"[{cat}/{code}]{field_str} {detail}")
+                return " | ".join(parts)[:2000]
+            try:
+                return _json.dumps(body)[:2000]
+            except Exception:
+                return str(body)[:2000]
+    # Fall back to well-known attributes before resorting to str()
+    for attr in ("message", "errors", "args"):
+        val = getattr(e, attr, None)
+        if val:
+            try:
+                return _json.dumps(val)[:2000]
+            except Exception:
+                return str(val)[:2000]
     return str(e)[:2000]
 
 

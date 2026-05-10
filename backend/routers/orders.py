@@ -1,9 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from datetime import datetime, timezone
 from typing import Optional
+import logging
+from zoneinfo import ZoneInfo
 
 from models import CreateOrderRequest, Order
 from auth_utils import get_optional_user, get_current_user
+
+logger = logging.getLogger("chaioz.orders")
+
+# All customer-facing times are shown in Adelaide local time.
+_ADELAIDE_TZ = ZoneInfo("Australia/Adelaide")
 from services.uber import create_delivery
 from services.notifications import (
     send_email,
@@ -17,6 +24,39 @@ from services.loyalty import sync_account_for_order, square_configured as loyalt
 from services.push import send_to_user as push_send_to_user
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+
+
+async def _send_order_confirmation(
+    to_email: str,
+    short_code: str,
+    customer_name: str,
+    items: list,
+    total: float,
+    pickup_local: str,
+) -> None:
+    """Background task wrapper that logs clearly when email delivery fails or
+    is silently swallowed by Resend dev-mode, so operators know to fix config."""
+    try:
+        result = await send_email(
+            to_email,
+            f"Chaioz — order #{short_code} confirmed",
+            order_confirmation_email_html(customer_name, short_code, items, total, pickup_local),
+        )
+        if result.get("dev_mode"):
+            logger.warning(
+                "Order #%s confirmation NOT delivered to %s — Resend is in dev/sandbox mode. "
+                "Set RESEND_API_KEY + verify SENDER_EMAIL domain to deliver to real recipients.",
+                short_code, to_email,
+            )
+        elif result.get("status") == "error":
+            logger.error(
+                "Order #%s confirmation email failed for %s: %s",
+                short_code, to_email, result.get("error"),
+            )
+        else:
+            logger.info("Order #%s confirmation sent to %s (id=%s)", short_code, to_email, result.get("id"))
+    except Exception as exc:
+        logger.exception("Unhandled error sending order #%s confirmation to %s: %s", short_code, to_email, exc)
 
 
 def _calc_loyalty_tier(points: int) -> str:
@@ -111,20 +151,20 @@ async def create_order(
 
     if payload.customer_email:
         try:
-            pickup_local = datetime.fromisoformat(pickup_time_iso.replace("Z", "+00:00")).strftime("%I:%M %p")
+            pickup_dt = datetime.fromisoformat(pickup_time_iso.replace("Z", "+00:00"))
+            # Show the time in Adelaide local time so the customer sees the same
+            # wall-clock value they selected at checkout (not UTC).
+            pickup_local = pickup_dt.astimezone(_ADELAIDE_TZ).strftime("%I:%M %p").lstrip("0")
         except Exception:
             pickup_local = "soon"
         bg.add_task(
-            send_email,
+            _send_order_confirmation,
             payload.customer_email,
-            f"Chaioz — order #{order.short_code} confirmed",
-            order_confirmation_email_html(
-                payload.customer_name,
-                order.short_code,
-                [i.model_dump() for i in payload.items],
-                total,
-                pickup_local,
-            ),
+            order.short_code,
+            payload.customer_name,
+            [i.model_dump() for i in payload.items],
+            total,
+            pickup_local,
         )
 
     if payload.customer_email:
