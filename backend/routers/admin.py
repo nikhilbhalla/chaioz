@@ -563,17 +563,15 @@ async def email_test(payload: dict, _: dict = Depends(get_current_admin)):
 
 
 # ---------- Square POS diagnostics ---------------------------------------------
-@router.get("/square/status")
-async def square_status(_: dict = Depends(get_current_admin)):
-    """Surface the current Square config + a live connectivity check so the
-    operator can confirm orders are flowing into the correct Square account
-    (sandbox vs production) and to the right location."""
+async def _build_square_status() -> dict:
+    """Compute the Square status payload — extracted so /square/reload can
+    reuse it without going through the dependency-injected route handler."""
     import os
-    from services.square_pos import _get_client, SQUARE_ENVIRONMENT, SQUARE_LOCATION_ID, is_configured
+    import hashlib
+    from services.square_pos import _get_client, SQUARE_ENVIRONMENT, SQUARE_LOCATION_ID, is_configured, _serialize_square_error
 
     app_id = os.environ.get("SQUARE_APPLICATION_ID", "")
     token = os.environ.get("SQUARE_ACCESS_TOKEN", "")
-    # App IDs carry the env prefix — "sandbox-sq0idb-" vs "sq0idp-".
     app_id_suggests_sandbox = app_id.startswith("sandbox-")
     app_id_suggests_production = bool(app_id) and not app_id_suggests_sandbox
     env_mismatch = (
@@ -581,12 +579,31 @@ async def square_status(_: dict = Depends(get_current_admin)):
         or (SQUARE_ENVIRONMENT == "sandbox" and app_id_suggests_production)
     )
 
+    token_preview = None
+    token_length = len(token)
+    token_hash = None
+    has_whitespace = False
+    if token:
+        token_preview = f"{token[:4]}…{token[-4:]}" if len(token) >= 8 else "(too short)"
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()[:12]
+        has_whitespace = (
+            token != token.strip()
+            or "\n" in token
+            or "\r" in token
+            or '"' in token
+            or "'" in token
+        )
+
     status = {
         "configured": is_configured(),
         "environment": SQUARE_ENVIRONMENT,
         "location_id": SQUARE_LOCATION_ID or None,
         "application_id_prefix": app_id[:24] + "…" if app_id else None,
         "access_token_present": bool(token),
+        "access_token_preview": token_preview,
+        "access_token_length": token_length,
+        "access_token_hash": token_hash,
+        "access_token_has_whitespace": has_whitespace,
         "env_mismatch": env_mismatch,
         "connectivity": None,
         "location_name": None,
@@ -608,7 +625,6 @@ async def square_status(_: dict = Depends(get_current_admin)):
                 status["connectivity"] = "error"
                 status["error"] = "No location returned"
         except Exception as e:
-            from services.square_pos import _serialize_square_error
             status["connectivity"] = "error"
             status["error"] = _serialize_square_error(e)
     elif not client:
@@ -616,6 +632,22 @@ async def square_status(_: dict = Depends(get_current_admin)):
         status["error"] = "Square client could not be initialised — check access token"
 
     return status
+
+
+@router.get("/square/status")
+async def square_status(_: dict = Depends(get_current_admin)):
+    return await _build_square_status()
+
+
+@router.post("/square/reload")
+async def square_reload(_: dict = Depends(get_current_admin)):
+    """Bust the cached Square SDK client + re-read env vars. Use this after
+    rotating the token — saves a full backend restart. Returns the post-reload
+    status so the operator can see immediately whether the new token works."""
+    import importlib
+    from services import square_pos as _sq
+    importlib.reload(_sq)
+    return await _build_square_status()
 
 
 @router.post("/square/resync/{order_id}")

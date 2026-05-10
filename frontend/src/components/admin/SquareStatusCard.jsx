@@ -113,8 +113,32 @@ export default function SquareStatusCard() {
             <dd className="text-chaioz-teal/80 font-mono text-[11px]">{status.application_id_prefix || "—"}</dd>
 
             <dt className="text-chaioz-teal/60">Access token</dt>
-            <dd className="text-chaioz-teal/80">{status.access_token_present ? "Present" : "Missing"}</dd>
+            <dd className="text-chaioz-teal/80" data-testid="square-token-info">
+              {status.access_token_present ? (
+                <span className="font-mono text-[11px]">
+                  {status.access_token_preview} <span className="text-chaioz-teal/50">(len {status.access_token_length})</span>
+                </span>
+              ) : "Missing"}
+            </dd>
+
+            {status.access_token_hash && (
+              <>
+                <dt className="text-chaioz-teal/60">Token fingerprint</dt>
+                <dd className="text-chaioz-teal/80 font-mono text-[10px]" title="SHA-256 prefix of the loaded token. Lets you confirm what production has matches what's in your Secrets tab.">
+                  {status.access_token_hash}
+                </dd>
+              </>
+            )}
           </dl>
+
+          {status.access_token_has_whitespace && (
+            <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3" data-testid="square-token-whitespace-warning">
+              <p className="text-xs font-semibold text-red-900">⚠ Whitespace or quotes in your token</p>
+              <p className="text-[11px] text-red-900 mt-1">
+                The loaded token contains whitespace, quotes, or a newline. Square will reject it. Re-paste the token in the Secrets tab — make sure no leading/trailing spaces, no surrounding quotes.
+              </p>
+            </div>
+          )}
 
           {status.env_mismatch && (
             <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3" data-testid="square-mismatch-warning">
