@@ -4,18 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CheckCircle2, AlertTriangle, Send, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Send, Loader2, XCircle, RefreshCw } from "lucide-react";
 
 /** Surfaces Resend config + a one-click test send so the operator can quickly
- *  diagnose why customer signup OTPs aren't landing in inboxes. */
+ *  diagnose why customer emails aren't landing in inboxes. */
 export default function EmailDeliveryCard() {
   const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    api.get("/admin/email/status").then((r) => setStatus(r.data)).catch(() => {});
-  }, []);
+  const load = async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const { data } = await api.get("/admin/email/status");
+      setStatus(data);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
 
   const sendTest = async (e) => {
     e.preventDefault();
@@ -36,6 +49,31 @@ export default function EmailDeliveryCard() {
       setBusy(false);
     }
   };
+
+  if (loading && !status) {
+    return (
+      <div className="border border-chaioz-line bg-white rounded-2xl p-6 flex items-center gap-3 text-chaioz-teal/60">
+        <Loader2 className="w-4 h-4 animate-spin" /> Checking email config…
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="border border-chaioz-line bg-white rounded-2xl p-6" data-testid="email-delivery-error">
+        <div className="flex items-start gap-3">
+          <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-serif text-xl text-chaioz-teal">Email delivery</h3>
+            <p className="text-xs text-red-500 mt-1">Could not load email config — is the backend running?</p>
+            <Button variant="outline" size="sm" onClick={load} className="mt-3 rounded-full h-8">
+              <RefreshCw className="w-3 h-3 mr-1" /> Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!status) return null;
   const ok = status.delivers_to_anyone;

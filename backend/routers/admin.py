@@ -599,7 +599,9 @@ async def square_status(_: dict = Depends(get_current_admin)):
             import asyncio as _asyncio
             def _call():
                 return client.locations.get(location_id=SQUARE_LOCATION_ID)
-            resp = await _asyncio.to_thread(_call)
+            # 10-second timeout so a slow/unresponsive Square API never hangs
+            # the admin settings page indefinitely.
+            resp = await _asyncio.wait_for(_asyncio.to_thread(_call), timeout=10.0)
             loc = getattr(resp, "location", None) or (resp.get("location") if isinstance(resp, dict) else None)
             if loc:
                 status["connectivity"] = "ok"
@@ -607,6 +609,9 @@ async def square_status(_: dict = Depends(get_current_admin)):
             else:
                 status["connectivity"] = "error"
                 status["error"] = "No location returned"
+        except _asyncio.TimeoutError:
+            status["connectivity"] = "error"
+            status["error"] = "Square API did not respond within 10 s — check your network or Square status page."
         except Exception as e:
             from services.square_pos import _serialize_square_error
             status["connectivity"] = "error"

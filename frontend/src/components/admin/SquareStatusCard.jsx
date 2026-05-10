@@ -8,14 +8,16 @@ import { CheckCircle2, AlertTriangle, XCircle, Loader2, RefreshCw } from "lucide
 export default function SquareStatusCard() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const load = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const { data } = await api.get("/admin/square/status");
       setStatus(data);
-    } catch (_) {
-      setStatus(null);
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -30,6 +32,24 @@ export default function SquareStatusCard() {
       </div>
     );
   }
+
+  if (loadError) {
+    return (
+      <div className="border border-chaioz-line bg-white rounded-2xl p-6" data-testid="square-status-error">
+        <div className="flex items-start gap-3">
+          <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-serif text-xl text-chaioz-teal">Square POS sync</h3>
+            <p className="text-xs text-red-500 mt-1">Could not load Square status — is the backend running?</p>
+            <Button variant="outline" size="sm" onClick={load} disabled={loading} className="mt-3 rounded-full h-8">
+              <RefreshCw className={`w-3 h-3 mr-1 ${loading ? "animate-spin" : ""}`} /> Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!status) return null;
 
   const connectivityOk = status.connectivity === "ok";
