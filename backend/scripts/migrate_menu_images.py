@@ -17,6 +17,7 @@ import asyncio
 import logging
 from urllib.parse import urljoin
 
+import certifi
 import httpx
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -61,7 +62,9 @@ async def main():
     log.info("Got %d items from live API", len(live_items))
 
     log.info("Connecting to MongoDB (%s)…", db_name)
-    client = AsyncIOMotorClient(mongo_url)
+    # Use certifi's CA bundle so macOS Python (which doesn't ship trusted roots)
+    # can verify Atlas TLS certificates.
+    client = AsyncIOMotorClient(mongo_url, tlsCAFile=certifi.where())
     db = client[db_name]
     existing_count = await db.menu_items.count_documents({})
     log.info("Target DB currently has %d menu_items documents", existing_count)
