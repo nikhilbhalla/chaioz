@@ -24,13 +24,16 @@ export default function Landing() {
   const { isMorning } = useDayMode();
 
   useEffect(() => {
-    api.get("/menu/bestsellers").then((r) => setBestsellers(r.data || [])).catch(() => {});
+    api.get("/menu/bestsellers")
+      .then((r) => setBestsellers(Array.isArray(r.data) ? r.data : []))
+      .catch(() => setBestsellers([]));
     // Only show combos that have a real image — no image = auto-hidden so
     // we never display a stock photo against a mis-matching combo name.
     api.get("/menu/combos").then((r) => {
-      const withImages = (r.data || []).filter((c) => c.image_url && c.image_url.trim());
+      const list = Array.isArray(r.data) ? r.data : [];
+      const withImages = list.filter((c) => c.image_url && c.image_url.trim());
       setComboTiles(withImages.slice(0, 3));
-    }).catch(() => {});
+    }).catch(() => setComboTiles([]));
   }, []);
 
   const onAdd = (item) => {
