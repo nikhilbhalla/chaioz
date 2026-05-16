@@ -163,8 +163,11 @@ async def create_order(
         sq_res = await push_order_to_square(doc)
         if not sq_res["success"]:
             await db.orders.delete_one({"id": order.id})
-            logger.error("Square order push failed for #%s: %s", order.short_code, sq_res.get("error"))
-            raise HTTPException(status_code=502, detail="Could not create order in Square. Please try again.")
+            err = sq_res.get("error") or "unknown"
+            logger.error("Square order push failed for #%s: %s", order.short_code, err)
+            # TEMP: surface the Square error message during integration debugging.
+            # Revert to a generic message once production is stable.
+            raise HTTPException(status_code=502, detail=f"Square order error: {err}")
 
         pay_res = await create_card_payment(
             sq_res["square_order_id"],
@@ -175,9 +178,10 @@ async def create_order(
         if not pay_res["success"]:
             # Square will auto-cancel the unpaid order after a short TTL.
             await db.orders.delete_one({"id": order.id})
-            logger.warning("Card declined for #%s: %s", order.short_code, pay_res.get("error"))
-            # Surface a user-friendly message; the structured error is in logs.
-            raise HTTPException(status_code=402, detail="Your card was declined. Please try a different card.")
+            err = pay_res.get("error") or "unknown"
+            logger.warning("Card declined for #%s: %s", order.short_code, err)
+            # TEMP: expose the Square error during integration debugging.
+            raise HTTPException(status_code=402, detail=f"Payment error: {err}")
 
         update = {
             "square_order_id": sq_res["square_order_id"],
