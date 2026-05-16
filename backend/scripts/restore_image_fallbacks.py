@@ -36,13 +36,13 @@ async def main():
         sys.exit(1)
 
     # Import seed_data so we get the same name → image map as the original
-    # database seed.
+    # database seed. `menu_items` is a factory function that returns the
+    # list of seed dicts.
     from seed_data import menu_items  # noqa: E402
 
-    # Build a name → image map from the seed list. seed_data exposes a
-    # `menu_items` list of dicts already populated with `name` + `image`.
+    seed_items = menu_items() if callable(menu_items) else menu_items
     seed_map = {}
-    for it in menu_items:
+    for it in seed_items:
         n = (it.get("name") or "").strip().lower()
         img = it.get("image")
         if n and img:
