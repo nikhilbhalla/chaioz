@@ -165,9 +165,7 @@ async def create_order(
             await db.orders.delete_one({"id": order.id})
             err = sq_res.get("error") or "unknown"
             logger.error("Square order push failed for #%s: %s", order.short_code, err)
-            # TEMP: surface the Square error message during integration debugging.
-            # Revert to a generic message once production is stable.
-            raise HTTPException(status_code=502, detail=f"Square order error: {err}")
+            raise HTTPException(status_code=502, detail="Could not create order. Please try again.")
 
         pay_res = await create_card_payment(
             sq_res["square_order_id"],
@@ -180,8 +178,16 @@ async def create_order(
             await db.orders.delete_one({"id": order.id})
             err = pay_res.get("error") or "unknown"
             logger.warning("Card declined for #%s: %s", order.short_code, err)
-            # TEMP: expose the Square error during integration debugging.
-            raise HTTPException(status_code=402, detail=f"Payment error: {err}")
+            # Pull the human-readable bit out of the structured serialiser
+            # (e.g. "CVV_FAILURE" -> "Your card's security code is incorrect.")
+            user_msg = "Your card was declined. Please try a different card."
+            if "CVV" in err.upper():
+                user_msg = "Card security code (CVV) is incorrect."
+            elif "INSUFFICIENT_FUNDS" in err.upper():
+                user_msg = "Card declined — insufficient funds."
+            elif "EXPIRED" in err.upper():
+                user_msg = "Card is expired."
+            raise HTTPException(status_code=402, detail=user_msg)
 
         update = {
             "square_order_id": sq_res["square_order_id"],
