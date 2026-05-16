@@ -145,27 +145,27 @@ export default function MenuPage() {
         )}
       </div>
 
-      <div className="grid lg:grid-cols-[220px_1fr] gap-10">
-        <aside className="lg:sticky lg:top-28 self-start">
-          <div className="overflow-x-auto lg:overflow-visible no-scrollbar">
-            <ul className="flex lg:flex-col gap-2">
-              {cats.map((c) => (
-                <li key={c.name}>
-                  <button
-                    onClick={() => setActive(c.name)}
-                    data-testid={`cat-${c.name.replace(/\s/g, "-").toLowerCase()}`}
-                    className={`whitespace-nowrap text-sm tracking-wide uppercase px-4 py-2 rounded-full transition-colors lg:w-full lg:text-left ${
-                      active === c.name
-                        ? "bg-chaioz-saffron text-chaioz-teal"
-                        : "text-chaioz-teal/70 hover:text-chaioz-saffron border border-chaioz-line lg:border-transparent"
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+      <div className="grid lg:grid-cols-[220px_1fr] gap-6 lg:gap-10">
+        {/* Category nav: wraps onto multiple rows on mobile/tablet (no horizontal
+            scrolling), becomes a sticky sidebar on desktop. */}
+        <aside className="lg:sticky lg:top-28 self-start -mx-2 lg:mx-0 px-2 lg:px-0">
+          <ul className="flex flex-wrap lg:flex-col gap-2">
+            {cats.map((c) => (
+              <li key={c.name}>
+                <button
+                  onClick={() => setActive(c.name === active ? "" : c.name)}
+                  data-testid={`cat-${c.name.replace(/\s/g, "-").toLowerCase()}`}
+                  className={`whitespace-nowrap text-xs sm:text-sm tracking-wide uppercase px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition-colors lg:w-full lg:text-left ${
+                    active === c.name
+                      ? "bg-chaioz-saffron text-chaioz-teal"
+                      : "text-chaioz-teal/70 hover:text-chaioz-saffron border border-chaioz-line lg:border-transparent"
+                  }`}
+                >
+                  {c.name}
+                </button>
+              </li>
+            ))}
+          </ul>
         </aside>
 
         <div className="space-y-12">
