@@ -427,52 +427,26 @@ export default function Checkout() {
             </div>
           )}
 
-          {/* Payment */}
+          {/* Payment — card only, online charge via Square Web Payments SDK */}
           <div className="border border-chaioz-line rounded-2xl bg-white p-6 space-y-4">
             <h2 className="font-serif text-2xl text-chaioz-teal">Payment</h2>
             <p className="text-xs text-chaioz-teal/60 leading-relaxed">
               <ShieldCheck className="w-4 h-4 inline -mt-0.5 mr-1 text-chaioz-saffron" />
               Card details are entered directly into Square's secure form — they never touch our server.
             </p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPayment("square_card")}
-                data-testid="payment-square"
-                className={`text-left border rounded-xl p-4 ${payment === "square_card" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
-              >
-                <p className="font-medium text-chaioz-teal">Card</p>
-                <p className="text-xs text-chaioz-teal/60 mt-1">Pay securely now</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPayment("pay_at_pickup")}
-                data-testid="payment-pickup"
-                className={`text-left border rounded-xl p-4 ${payment === "pay_at_pickup" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
-              >
-                <p className="font-medium text-chaioz-teal">Pay at {fulfillment === "delivery" ? "delivery" : "pickup"}</p>
-                <p className="text-xs text-chaioz-teal/60 mt-1">Tap or cash on collection</p>
-              </button>
-            </div>
 
-            {/* Square card iframe — only rendered when the card option is selected.
-                The Web Payments SDK attaches an iframe to this div on mount. */}
-            {payment === "square_card" && (
-              <div className="pt-2">
-                <div
-                  ref={cardMountRef}
-                  data-testid="square-card-container"
-                  className="min-h-[110px] border border-chaioz-line rounded-xl p-3 bg-chaioz-cream"
-                />
-                {!squareReady && !squareError && (
-                  <p className="text-xs text-chaioz-teal/60 mt-2 flex items-center gap-2">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Loading secure card form…
-                  </p>
-                )}
-                {squareError && (
-                  <p className="text-xs text-red-600 mt-2" data-testid="square-error">{squareError}</p>
-                )}
-              </div>
+            <div
+              ref={cardMountRef}
+              data-testid="square-card-container"
+              className="min-h-[110px] border border-chaioz-line rounded-xl p-3 bg-chaioz-cream"
+            />
+            {!squareReady && !squareError && (
+              <p className="text-xs text-chaioz-teal/60 flex items-center gap-2">
+                <Loader2 className="w-3 h-3 animate-spin" /> Loading secure card form…
+              </p>
+            )}
+            {squareError && (
+              <p className="text-xs text-red-600" data-testid="square-error">{squareError}</p>
             )}
           </div>
         </div>
