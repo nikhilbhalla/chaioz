@@ -19,7 +19,13 @@ from services.notifications import (
     order_confirmation_email_html,
     order_ready_sms,
 )
-from services.square_pos import sync_order_async, is_configured as square_configured, _ensure_rfc3339
+from services.square_pos import (
+    sync_order_async,
+    push_order_to_square,
+    create_card_payment,
+    is_configured as square_configured,
+    _ensure_rfc3339,
+)
 from services.loyalty import sync_account_for_order, square_configured as loyalty_configured
 from services.push import send_to_user as push_send_to_user
 
@@ -109,6 +115,9 @@ async def create_order(
         customer_email=payload.customer_email,
         notes=payload.notes,
         payment_method=payload.payment_method,
+        # square_card flow charges synchronously below — start as unpaid, flip
+        # to paid only when the Payment API call succeeds. square_mock keeps
+        # legacy "paid" behaviour for sandbox testing.
         payment_status="paid" if payload.payment_method == "square_mock" else "unpaid",
         fulfillment=payload.fulfillment,
         delivery_address=payload.delivery_address,
@@ -134,6 +143,50 @@ async def create_order(
             doc["delivery_status"] = "dispatch_failed"
 
     await db.orders.insert_one(doc)
+
+    # ── Synchronous card charge (square_card flow) ────────────────────────
+    # When the customer paid online via Square Web Payments SDK, we must
+    # capture the funds *before* returning success. This guarantees:
+    #   1. The Square order ends up paid → appears on the café POS Pickup
+    #      Orders queue with staff notification
+    #   2. We don't promise a confirmed order to a customer whose card
+    #      was declined
+    # On any failure we roll back the local order so the customer can retry.
+    if payload.payment_method == "square_card":
+        if not payload.payment_source_id:
+            await db.orders.delete_one({"id": order.id})
+            raise HTTPException(status_code=400, detail="Missing payment_source_id for square_card payment")
+        if not square_configured():
+            await db.orders.delete_one({"id": order.id})
+            raise HTTPException(status_code=503, detail="Online payment is temporarily unavailable")
+
+        sq_res = await push_order_to_square(doc)
+        if not sq_res["success"]:
+            await db.orders.delete_one({"id": order.id})
+            logger.error("Square order push failed for #%s: %s", order.short_code, sq_res.get("error"))
+            raise HTTPException(status_code=502, detail="Could not create order in Square. Please try again.")
+
+        pay_res = await create_card_payment(
+            sq_res["square_order_id"],
+            total,
+            payload.payment_source_id,
+            buyer_email=payload.customer_email,
+        )
+        if not pay_res["success"]:
+            # Square will auto-cancel the unpaid order after a short TTL.
+            await db.orders.delete_one({"id": order.id})
+            logger.warning("Card declined for #%s: %s", order.short_code, pay_res.get("error"))
+            # Surface a user-friendly message; the structured error is in logs.
+            raise HTTPException(status_code=402, detail="Your card was declined. Please try a different card.")
+
+        update = {
+            "square_order_id": sq_res["square_order_id"],
+            "square_payment_id": pay_res["payment_id"],
+            "square_synced_at": datetime.now(timezone.utc).isoformat(),
+            "payment_status": "paid",
+        }
+        await db.orders.update_one({"id": order.id}, {"$set": update})
+        doc.update(update)
 
     points_earned = 0
     if user:
@@ -187,9 +240,13 @@ async def create_order(
             {"type": "order_confirmed", "order_id": order.id, "short_code": order.short_code},
         )
 
-    # Push to Square POS → staff KDS (non-blocking). The wrapper also fires
-    # the Square Loyalty accrual once the order has been pushed.
-    if square_configured():
+    # Push to Square POS → staff KDS (non-blocking) for non-card flows.
+    # square_card already pushed synchronously above; we only need to fire
+    # the Square Loyalty accrual in the background.
+    if payload.payment_method == "square_card":
+        if user and loyalty_configured() and doc.get("square_order_id"):
+            bg.add_task(sync_account_for_order, user, doc)
+    elif square_configured():
         async def _sync_then_loyalty(order_id: str, doc: dict, user_doc: dict | None):
             await sync_order_async(order_id, doc)
             if user_doc and loyalty_configured():

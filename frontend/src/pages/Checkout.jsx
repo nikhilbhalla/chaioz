@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,14 @@ export default function Checkout() {
   const [phone, setPhone] = useState(contact.phone || "");
   const [notes, setNotes] = useState("");
   const [pickup, setPickup] = useState("");
-  const [payment, setPayment] = useState("square_mock");
+  const [payment, setPayment] = useState("square_card");
+  // Square Web Payments SDK refs/state — used to tokenise the customer's
+  // card *in-browser* (PCI compliance: card details never touch our server)
+  // and then post the resulting one-time nonce to /api/orders.
+  const cardRef = useRef(null);             // Square `Card` payment method instance
+  const cardMountRef = useRef(null);        // DOM node to attach Square's iframe into
+  const [squareReady, setSquareReady] = useState(false);
+  const [squareError, setSquareError] = useState("");
   const [fulfillment, setFulfillment] = useState("pickup");
   // Delivery fields
   const [street, setStreet] = useState("");
@@ -85,6 +92,87 @@ export default function Checkout() {
     setContact({ email, phone, name });
   }, [email, phone, name, setContact]);
 
+  // ── Square Web Payments SDK ────────────────────────────────────────────
+  // We initialise the SDK only when the customer is on the square_card
+  // payment option. The iframe-backed card form is attached to a div, and
+  // the resulting one-time nonce is captured on submit.
+  useEffect(() => {
+    if (payment !== "square_card") {
+      // Tear down if customer flipped to pay_at_pickup
+      if (cardRef.current) {
+        try { cardRef.current.destroy(); } catch (e) {}
+        cardRef.current = null;
+      }
+      setSquareReady(false);
+      return;
+    }
+
+    const appId = process.env.REACT_APP_SQUARE_APPLICATION_ID;
+    const locationId = process.env.REACT_APP_SQUARE_LOCATION_ID;
+    const env = (process.env.REACT_APP_SQUARE_ENVIRONMENT || "production").toLowerCase();
+    if (!appId || !locationId) {
+      setSquareError("Online payment is not configured. Please choose pay-at-pickup.");
+      return;
+    }
+
+    const scriptSrc = env === "sandbox"
+      ? "https://sandbox.web.squarecdn.com/v1/square.js"
+      : "https://web.squarecdn.com/v1/square.js";
+
+    let cancelled = false;
+
+    const ensureScript = () => new Promise((resolve, reject) => {
+      if (window.Square) return resolve();
+      const existing = document.querySelector(`script[src="${scriptSrc}"]`);
+      if (existing) {
+        existing.addEventListener("load", () => resolve());
+        existing.addEventListener("error", () => reject(new Error("Failed to load Square SDK")));
+        return;
+      }
+      const s = document.createElement("script");
+      s.src = scriptSrc;
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("Failed to load Square SDK"));
+      document.head.appendChild(s);
+    });
+
+    (async () => {
+      try {
+        await ensureScript();
+        if (cancelled) return;
+        const payments = window.Square.payments(appId, locationId);
+        const card = await payments.card();
+        if (cancelled) return;
+        // Wait for the mount node to exist (rendered when payment === square_card)
+        if (!cardMountRef.current) {
+          setSquareError("Card form mount node not ready");
+          return;
+        }
+        await card.attach(cardMountRef.current);
+        if (cancelled) {
+          try { card.destroy(); } catch (e) {}
+          return;
+        }
+        cardRef.current = card;
+        setSquareReady(true);
+        setSquareError("");
+      } catch (err) {
+        if (!cancelled) {
+          setSquareError(err.message || "Could not load card form");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (cardRef.current) {
+        try { cardRef.current.destroy(); } catch (e) {}
+        cardRef.current = null;
+      }
+    };
+  }, [payment]);
+
   const deliveryFee = quote?.fee_aud || 0;
   const orderTotal = useMemo(
     () => Number((totals.subtotal + (fulfillment === "delivery" ? deliveryFee : 0)).toFixed(2)),
@@ -129,6 +217,25 @@ export default function Checkout() {
     }
     setSubmitting(true);
     try {
+      // For card payments, tokenise the card *before* we hit the API. The
+      // resulting nonce is one-time-use and only valid for this charge.
+      let paymentSourceId = null;
+      if (payment === "square_card") {
+        if (!cardRef.current) {
+          toast.error("Card form isn't ready yet. Please wait a moment.");
+          setSubmitting(false);
+          return;
+        }
+        const result = await cardRef.current.tokenize();
+        if (result.status !== "OK") {
+          const msg = result.errors?.[0]?.message || "Could not validate card details";
+          toast.error(msg);
+          setSubmitting(false);
+          return;
+        }
+        paymentSourceId = result.token;
+      }
+
       const payload = {
         items: items.map((i) => ({
           item_id: i.item_id,
@@ -146,6 +253,7 @@ export default function Checkout() {
         customer_email: email || null,
         notes,
         payment_method: payment,
+        payment_source_id: paymentSourceId,
         fulfillment,
         delivery_address:
           fulfillment === "delivery"
@@ -324,18 +432,48 @@ export default function Checkout() {
             <h2 className="font-serif text-2xl text-chaioz-teal">Payment</h2>
             <p className="text-xs text-chaioz-teal/60 leading-relaxed">
               <ShieldCheck className="w-4 h-4 inline -mt-0.5 mr-1 text-chaioz-saffron" />
-              Square checkout (sandbox / mock). No real charge will be made until live Square keys are connected.
+              Card details are entered directly into Square's secure form — they never touch our server.
             </p>
             <div className="grid sm:grid-cols-2 gap-3">
-              <button onClick={() => setPayment("square_mock")} data-testid="payment-square" className={`text-left border rounded-xl p-4 ${payment === "square_mock" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}>
-                <p className="font-medium text-chaioz-teal">Card (Square)</p>
-                <p className="text-xs text-chaioz-teal/60 mt-1">Pay now via Square</p>
+              <button
+                type="button"
+                onClick={() => setPayment("square_card")}
+                data-testid="payment-square"
+                className={`text-left border rounded-xl p-4 ${payment === "square_card" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
+              >
+                <p className="font-medium text-chaioz-teal">Card</p>
+                <p className="text-xs text-chaioz-teal/60 mt-1">Pay securely now</p>
               </button>
-              <button onClick={() => setPayment("pay_at_pickup")} data-testid="payment-pickup" className={`text-left border rounded-xl p-4 ${payment === "pay_at_pickup" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}>
+              <button
+                type="button"
+                onClick={() => setPayment("pay_at_pickup")}
+                data-testid="payment-pickup"
+                className={`text-left border rounded-xl p-4 ${payment === "pay_at_pickup" ? "border-chaioz-saffron bg-chaioz-saffron/5" : "border-chaioz-line"}`}
+              >
                 <p className="font-medium text-chaioz-teal">Pay at {fulfillment === "delivery" ? "delivery" : "pickup"}</p>
                 <p className="text-xs text-chaioz-teal/60 mt-1">Tap or cash on collection</p>
               </button>
             </div>
+
+            {/* Square card iframe — only rendered when the card option is selected.
+                The Web Payments SDK attaches an iframe to this div on mount. */}
+            {payment === "square_card" && (
+              <div className="pt-2">
+                <div
+                  ref={cardMountRef}
+                  data-testid="square-card-container"
+                  className="min-h-[110px] border border-chaioz-line rounded-xl p-3 bg-chaioz-cream"
+                />
+                {!squareReady && !squareError && (
+                  <p className="text-xs text-chaioz-teal/60 mt-2 flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Loading secure card form…
+                  </p>
+                )}
+                {squareError && (
+                  <p className="text-xs text-red-600 mt-2" data-testid="square-error">{squareError}</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

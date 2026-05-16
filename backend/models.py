@@ -117,7 +117,11 @@ class CreateOrderRequest(BaseModel):
     customer_phone: str
     customer_email: Optional[str] = None
     notes: Optional[str] = None
-    payment_method: Literal["square_mock", "pay_at_pickup"] = "square_mock"
+    payment_method: Literal["square_card", "square_mock", "pay_at_pickup"] = "square_card"
+    # When payment_method == "square_card", the frontend tokenizes the customer's
+    # card via Square Web Payments SDK and posts the resulting one-time nonce
+    # here. The backend then charges it via Square Payments API.
+    payment_source_id: Optional[str] = None
     # Delivery option
     fulfillment: Literal["pickup", "delivery"] = "pickup"
     delivery_address: Optional[dict] = None    # {street_address: [..], city, state, zip_code, country}

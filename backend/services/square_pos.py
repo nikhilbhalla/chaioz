@@ -218,8 +218,56 @@ async def push_order_to_square(order: dict) -> dict:
         return {"success": False, "square_order_id": None, "error": err}
 
 
+async def create_card_payment(
+    square_order_id: str,
+    total_aud: float,
+    source_id: str,
+    buyer_email: Optional[str] = None,
+) -> dict:
+    """Charge the customer's card via Square Payments API.
+
+    `source_id` is a one-time-use nonce produced by Square Web Payments SDK
+    on the frontend (NOT a saved card-on-file token). Works in both sandbox
+    (test nonces like `cnon:card-nonce-ok`) and production (real cards
+    tokenized by the SDK).
+    """
+    client = _get_client()
+    if not client:
+        return {"success": False, "error": "Square not configured"}
+    if not square_order_id:
+        return {"success": False, "error": "missing square_order_id"}
+    if not source_id:
+        return {"success": False, "error": "missing payment source_id"}
+    try:
+        def _call():
+            kwargs = dict(
+                idempotency_key=str(uuid.uuid4()),
+                source_id=source_id,
+                amount_money={"amount": _cents(total_aud), "currency": SQUARE_CURRENCY},
+                order_id=square_order_id,
+                location_id=SQUARE_LOCATION_ID,
+                autocomplete=True,  # capture the funds immediately
+            )
+            if buyer_email:
+                kwargs["buyer_email_address"] = buyer_email
+            return client.payments.create(**kwargs)
+        resp = await asyncio.to_thread(_call)
+        payment = getattr(resp, "payment", None) or (resp.get("payment") if isinstance(resp, dict) else None)
+        if payment:
+            pid = payment.id if hasattr(payment, "id") else payment.get("id")
+            status = payment.status if hasattr(payment, "status") else payment.get("status")
+            logger.info("Square payment created: %s (status=%s, order=%s)", pid, status, square_order_id)
+            return {"success": True, "payment_id": pid, "status": status}
+        logger.warning("Square payment returned no payment: %s", resp)
+        return {"success": False, "error": "no payment in response"}
+    except Exception as e:
+        err = _serialize_square_error(e)
+        logger.exception("Square card payment exception: %s", err)
+        return {"success": False, "error": err}
+
+
 async def create_sandbox_payment(square_order_id: str, total_aud: float) -> dict:
-    """Mark the order as paid in Square sandbox (uses test nonce).
+    """Legacy: mark the order as paid in Square sandbox (uses test nonce).
 
     ONLY safe in sandbox — the test nonce `cnon:card-nonce-ok` is rejected by
     Square production. In production we skip auto-payment entirely; staff
