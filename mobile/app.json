@@ -74,7 +74,7 @@
       "androidMode": "default"
     },
     "extra": {
-      "apiBaseUrl": "https://chaioz.com.au",
+      "apiBaseUrl": "https://api.chaioz.com.au",
       "eas": {}
     }
   }

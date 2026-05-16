@@ -2,7 +2,10 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 
-const BASE = Constants.expoConfig?.extra?.apiBaseUrl || 'https://late-night-chai-1.preview.emergentagent.com';
+// Backend is hosted on Railway and exposed at api.chaioz.com.au. The
+// Emergent preview URL that used to be the fallback is permanently dead
+// — any builds that hit this fallback have already broken.
+const BASE = Constants.expoConfig?.extra?.apiBaseUrl || 'https://api.chaioz.com.au';
 
 export const api = axios.create({
   baseURL: `${BASE}/api`,
