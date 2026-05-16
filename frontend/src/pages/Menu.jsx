@@ -172,7 +172,7 @@ export default function MenuPage() {
           {Object.entries(grouped).map(([sub, list]) => (
             <div key={sub}>
               <h2 className="font-serif text-2xl text-chaioz-teal mb-5 border-b border-chaioz-line pb-2">{sub}</h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
                 {list.map((it) => (
                   <MenuItemCard key={it.id} item={it} onAdd={onAdd} />
                 ))}
