@@ -153,7 +153,13 @@ async def push_order_to_square(order: dict) -> dict:
     # Square requires RFC3339. Guard against 'ASAP' / empty / legacy values.
     pickup_iso = _ensure_rfc3339(order.get("pickup_time") or "")
 
-    fulfillment = {"type": fulfillment_type}
+    # Fulfillment state RESERVED tells Square "this is a committed online
+    # pickup/delivery — surface it on the POS tablet now". Default state is
+    # PROPOSED, which keeps the order hidden from the Pickup Orders queue
+    # until a payment lands. In production we skip auto-payment (staff
+    # charges on the tablet at pickup), so without RESERVED the staff never
+    # sees the order.
+    fulfillment = {"type": fulfillment_type, "state": "RESERVED"}
     if fulfillment_type == "PICKUP":
         fulfillment["pickup_details"] = {
             "recipient": {
